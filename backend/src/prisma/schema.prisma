@@ -1,0 +1,11 @@
+prisma/
+
+Chỉ có khi sử dụng Prisma ORM để quản lý database.
+
+schema.prisma
+
+Định nghĩa cấu trúc bảng: User, Room, Message, GameHistory, Friend…
+
+Chứa mối quan hệ giữa các bảng.
+
+Dùng để generate client Prisma (prisma generate) và migrate DB (prisma migrate).

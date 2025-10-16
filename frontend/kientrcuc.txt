@@ -1,0 +1,241 @@
+Cấu trúc thư mục tổng thể (Frontend – React)
+
+
+
+
+caro-online-frontend/
+│
+├── public/
+│   ├── index.html
+│   ├── favicon.ico
+│   └── assets/          # ảnh, nhạc, âm thanh tĩnh
+│
+├── src/
+│   ├── assets/          # chứa file media: hình, âm thanh, icon
+│   ├── components/      # các component tái sử dụng (UI nhỏ)
+│   ├── layouts/         # layout chung (Auth, Main, Game)
+│   ├── pages/           # mỗi trang tương ứng với 1 route (Lobby, GameRoom, ...)
+│   ├── store/           # quản lý state global (Redux/Context)
+│   ├── hooks/           # custom hooks (useSocket, useAuth, useGameState, ...)
+│   ├── services/        # gọi API hoặc kết nối Socket.IO
+│   ├── utils/           # hàm tiện ích (format thời gian, âm thanh, ...)
+│   ├── styles/          # file CSS/Tailwind/tokens (theme, màu, font)
+│   ├── App.jsx          # cấu hình router chính
+│   ├── main.jsx         # entrypoint React (render App)
+│   └── index.css        # style toàn cục
+│
+├── package.json
+└── vite.config.js / webpack.config.js
+
+🧩 Giải thích chi tiết từng thư mục
+
+1️⃣ /public/
+
+index.html: tệp HTML gốc mà React sẽ render vào (có <div id="root"></div>).
+
+favicon.ico: icon trang web.
+
+assets/ chứa file tĩnh không cần import (ví dụ nhạc nền, logo, hình caro nền, âm thanh click).
+
+👉 Không thay đổi trong runtime — trình duyệt load trực tiếp.
+
+
+2️⃣ /src/assets/
+
+Chứa toàn bộ hình ảnh, âm thanh, font, biểu tượng được import vào code React.
+Ví dụ:
+
+src/assets/
+├── images/
+│   ├── logo.png
+│   ├── board-bg.jpg
+│   └── avatar-default.png
+├── sounds/
+│   ├── move.mp3
+│   ├── win.mp3
+│   └── background.mp3
+└── icons/
+    ├── x-icon.svg
+    └── o-icon.svg
+
+
+
+3️⃣ /src/components/
+
+Các component nhỏ có thể tái sử dụng, không gắn liền với trang cụ thể.
+Mỗi component là một module riêng.
+
+Ví dụ:
+
+components/
+├── Navbar/
+│   ├── Navbar.jsx
+│   ├── NotificationBell.jsx
+│   └── UserMenu.jsx
+├── Sidebar/
+│   └── Sidebar.jsx
+├── ChatBox/
+│   └── ChatBox.jsx
+├── GameBoard/
+│   ├── GameBoard.jsx     # Canvas/WebGL rendering
+│   ├── Cell.jsx
+│   └── useGameBoard.js   # hook điều khiển bàn cờ
+├── PlayerList/
+│   └── PlayerList.jsx
+└── RoomCard/
+    └── RoomCard.jsx
+
+
+👉 Lợi ích:
+
+Dễ tái sử dụng giữa nhiều trang (vd: ChatBox có thể dùng ở “Phòng chơi” và “Chat riêng”).
+
+Dễ test độc lập.
+
+4️⃣ /src/layouts/
+
+Các layout chính (khung giao diện cố định, chứa Navbar, Sidebar, …).
+
+layouts/
+├── AuthLayout.jsx   # dùng cho Login / Register
+├── MainLayout.jsx   # dùng cho Lobby, Friends, Chat, Profile
+└── GameLayout.jsx   # dùng cho phòng chơi (fullscreen)
+
+
+👉 Mỗi layout sẽ có <Outlet /> để render nội dung của trang tương ứng.
+
+5️⃣ /src/pages/
+
+Mỗi route (trang) tương ứng với một folder riêng, dễ mở rộng sau này.
+
+pages/
+├── Auth/
+│   ├── Login.jsx
+│   ├── Register.jsx
+│   └── ForgotPassword.jsx
+├── Lobby/
+│   └── Lobby.jsx
+├── Rooms/
+│   ├── RoomList.jsx
+│   └── CreateRoom.jsx
+├── Game/
+│   ├── GameRoom.jsx
+│   └── PlayVsBot.jsx
+├── Friends/
+│   └── Friends.jsx
+├── Chat/
+│   └── PrivateChat.jsx
+├── Profile/
+│   └── Profile.jsx
+├── Leaderboard/
+│   └── Leaderboard.jsx
+└── Settings/
+    └── Settings.jsx
+
+
+👉 Mục tiêu:
+
+Dễ bảo trì: mỗi trang là một “mô-đun” riêng.
+
+Dễ mở rộng: chỉ cần thêm thư mục mới là có trang mới.
+
+6️⃣ /src/store/
+
+Chứa state global – dùng Redux hoặc React Context.
+
+Ví dụ (nếu dùng Redux Toolkit):
+
+store/
+├── index.js           # cấu hình store
+├── userSlice.js       # thông tin người chơi
+├── roomSlice.js       # trạng thái phòng chơi
+├── chatSlice.js       # chat realtime
+└── gameSlice.js       # bàn cờ, lượt đi, timer
+
+
+👉 Dữ liệu này đồng bộ giữa các component mà không cần truyền props thủ công.
+
+7️⃣ /src/hooks/
+
+Chứa các custom hooks để xử lý logic phức tạp, ví dụ:
+
+hooks/
+├── useSocket.js           # kết nối & lắng nghe sự kiện Socket.IO
+├── useAuth.js             # quản lý token, login/logout
+├── useGameState.js        # logic bàn cờ, lượt đi
+├── useAudio.js            # phát âm thanh khi đánh cờ
+└── useCountdown.js        # timer mỗi lượt đi
+
+
+👉 Giúp chia nhỏ logic, tránh code rối trong component.
+
+8️⃣ /src/services/
+
+Nơi chứa API và Socket service, tách biệt giữa logic và UI.
+
+services/
+├── api/
+│   ├── userApi.js        # đăng nhập, đăng ký, hồ sơ
+│   ├── roomApi.js        # tạo phòng, lấy danh sách, tham gia
+│   ├── chatApi.js        # lấy/lưu lịch sử chat
+│   └── friendApi.js      # danh sách bạn bè, mời bạn
+└── socket/
+    ├── socketClient.js   # khởi tạo Socket.IO client
+    └── gameSocket.js     # xử lý sự kiện game cụ thể
+
+9️⃣ /src/utils/
+
+Hàm tiện ích dùng chung toàn project:
+
+utils/
+├── formatTime.js
+├── soundManager.js
+├── storage.js          # localStorage wrapper
+└── constants.js        # biến cố định (BOARD_SIZE, TIME_LIMIT,…)
+
+🔟 /src/styles/
+
+Chứa file style toàn cục (nếu không dùng Tailwind CSS):
+
+styles/
+├── variables.css      # màu, font, kích thước chung
+├── global.css         # style tổng thể
+└── components.css     # style tái sử dụng
+
+
+👉 Nếu bạn dùng TailwindCSS hoặc MUI, thư mục này sẽ đơn giản hơn (chỉ còn config theme).
+
+🧭 Luồng hoạt động React (tổng quát)
+User mở trang → 
+App.jsx (Router) chọn layout phù hợp → 
+Layout render Navbar/Sidebar → 
+Outlet render trang cụ thể (Lobby / Game / Chat) →
+Trang gọi services (API / Socket) → 
+Kết quả lưu vào store → 
+Component con (GameBoard, ChatBox, PlayerList) hiển thị realtime
+
+🧠 Ví dụ liên kết giữa các phần
+
+Lobby.jsx → hiển thị danh sách phòng (gọi roomApi.getRooms()).
+
+RoomList component → mỗi phòng có nút "Join" → khi click sẽ gọi socket.emit("join_room").
+
+GameRoom.jsx → render <GameBoard /> + <ChatBox />, dùng useSocket() để nhận nước đi từ đối phương.
+
+useGameState() hook quản lý lượt, bàn cờ, xác định thắng/thua.
+
+soundManager.js phát âm thanh khi có nước đi.
+
+gameSlice.js lưu trạng thái game toàn cục.
+
+✅ Tóm tắt
+Thư mục	Vai trò chính
+/components	Các phần tử UI nhỏ, tái sử dụng
+/layouts	Khung bố cục trang (Auth, Main, Game)
+/pages	Trang cụ thể (Lobby, GameRoom, Chat…)
+/store	State toàn cục (Redux/Context)
+/hooks	Custom hooks tách logic
+/services	Gọi API + Socket.IO
+/utils	Hàm tiện ích, hằng số
+/assets	Ảnh, âm thanh, icon
+/styles	CSS/Tailwind theme
