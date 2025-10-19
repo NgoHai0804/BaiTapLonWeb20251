@@ -198,6 +198,53 @@ async function removeFriend(userAId, userBId) {
   }
 }
 
+// 4.1️ Chặn bạn bè
+async function blockFriend(userId, friendId) {
+  try {
+    const friendRecord = await Friend.findOne({
+      $or: [
+        { requester: userId, addressee: friendId },
+        { requester: friendId, addressee: userId },
+      ],
+    });
+
+    if (!friendRecord) throw new Error("Không có mối quan hệ để chặn");
+    friendRecord.status = "blocked";
+    await friendRecord.save();
+
+    logger.info(`User ${userId} blocked friend ${friendId}`);
+
+    return true;
+  } catch (err) {
+    logger.error("blockFriend error: %o", err);
+    throw err;
+  }
+}
+
+// 4.2️ Bỏ chặn bạn bè
+async function unblockFriend(userId, friendId) {
+  try {
+    const friendRecord = await Friend.findOne({
+      $or: [
+        { requester: userId, addressee: friendId },
+        { requester: friendId, addressee: userId },
+      ],
+      status: "blocked",
+    });
+
+    if (!friendRecord) throw new Error("Không có mối quan hệ bị chặn để bỏ chặn");
+    friendRecord.status = "accepted"; // Giả sử bỏ chặn thì trở lại accepted
+    await friendRecord.save();
+
+    logger.info(`User ${userId} unblocked friend ${friendId}`);
+
+    return true;
+  } catch (err) {
+    logger.error("unblockFriend error: %o", err);
+    throw err;
+  }
+}
+
 
 // 5️ Lấy danh sách bạn bè
 async function getFriendsList(userId) {
@@ -336,6 +383,8 @@ module.exports = {
   acceptFriendRequest,
   cancelFriendRequest,
   removeFriend,
+  blockFriend,
+  unblockFriend,
   getFriendsList,
   getPendingRequests,
   getRelationshipStatus,

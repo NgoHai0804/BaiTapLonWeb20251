@@ -140,6 +140,38 @@ async function removeFriend(req, res) {
 }
 
 // ============================================
+// Chặn bạn bè
+// ============================================
+async function blockFriend(req, res) {
+  try {
+    const userId = req.user._id;
+    const { friendId } = req.body;
+
+    await friendService.blockFriend(userId, friendId);
+    return response.success(res, {}, "Friend blocked");
+  } catch (err) {
+    console.error("blockFriend error:", err);
+    return response.error(res, err.message);
+  }
+}
+
+// ============================================
+// Bỏ chặn bạn bè
+// ============================================
+async function unblockFriend(req, res) {
+  try {
+    const userId = req.user._id;
+    const { friendId } = req.body;
+
+    await friendService.unblockFriend(userId, friendId);
+    return response.success(res, {}, "Friend unblocked");
+  } catch (err) {
+    console.error("unblockFriend error:", err);
+    return response.error(res, err.message);
+  }
+}
+
+// ============================================
 // Export toàn bộ controller
 // ============================================
 module.exports = {
@@ -150,4 +182,6 @@ module.exports = {
   cancelRequest,
   searchUser,
   removeFriend,
+  blockFriend,
+  unblockFriend,
 };

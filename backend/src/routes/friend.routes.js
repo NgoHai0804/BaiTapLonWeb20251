@@ -6,9 +6,9 @@
 // 2. Gửi lời mời kết bạn RESTful
 
 // 4. Lấy danh sách lời mời RESTful
-// 5 Chấp nhận/ Hủy lời mời RESTful
-// 6. Tìm bạn bè theo username RESTful
-// 7. Hủy kết bạn RESTful
+5 Chấp nhận/ Hủy lời mời RESTful
+ 6. Tìm bạn bè theo username RESTful
+ 7. Hủy kết bạn RESTful
 
 
 const express = require('express');
@@ -42,5 +42,11 @@ router.post('/search', FriendController.searchUser);
 
 // Hủy kết bạn
 router.post('/unfriend', FriendController.removeFriend);
+
+// Chặn bạn bè
+router.post('/block', FriendController.blockFriend);
+
+// Bỏ chặn bạn bè
+router.post('/unblock', FriendController.unblockFriend);
 
 module.exports = router;

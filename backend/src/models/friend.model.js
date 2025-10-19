@@ -4,7 +4,7 @@ const { Schema } = mongoose;
 const FriendSchema = new Schema({
   requester: { type: Schema.Types.ObjectId, ref: 'User', required: true, index: true }, // Yêu cầu
   addressee: { type: Schema.Types.ObjectId, ref: 'User', required: true, index: true }, // Người nhận
-  status: { type: String, enum: ['pending','accepted','canceled', 'removed'], default: 'pending' }, // Trạng thái
+  status: { type: String, enum: ['pending','accepted','canceled', 'removed', 'blocked'], default: 'pending' }, // Trạng thái
   createdAt: { type: Date, default: Date.now }, // Ngày tạo
   updateAt: { type: Date, default: Date.now }, // Thời gian cập nhật gần nhất
 });
