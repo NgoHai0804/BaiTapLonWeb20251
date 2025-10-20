@@ -1,183 +1,133 @@
-/**
- * Sound Manager
- * Centralized audio management system
- */
+// soundManager.js - Quản lý và phát hiệu ứng âm thanh
 
 class SoundManager {
-    constructor() {
-        this.sounds = {};
-        this.enabled = true;
-        this.volume = 0.5;
+  constructor() {
+    this.sounds = {};
+    this.muted = localStorage.getItem('soundEnabled') === 'false';
+    this.volume = 0.5;
+    this.loadSounds();
+  }
 
-        // Load from localStorage
-        const savedSettings = localStorage.getItem('soundSettings');
-        if (savedSettings) {
-            const settings = JSON.parse(savedSettings);
-            this.enabled = settings.enabled ?? true;
-            this.volume = settings.volume ?? 0.5;
-        }
+  loadSounds() {
+    // Tạo audio objects cho các âm thanh
+    // Có thể thay thế bằng file thật sau
+    this.sounds = {
+      move: this.createSound('move'),
+      win: this.createSound('win'),
+      lose: this.createSound('lose'),
+      draw: this.createSound('draw'),
+      message: this.createSound('message'),
+      click: this.createSound('click'),
+    };
+  }
+
+  createSound(type) {
+    // Tạo audio object - có thể load từ file sau
+    const audio = new Audio();
+    // Tạm thời dùng Web Audio API để tạo âm thanh đơn giản
+    // Hoặc có thể load từ file: audio.src = `/assets/sounds/${type}.mp3`;
+    return audio;
+  }
+
+  playSound(type) {
+    if (this.muted) return;
+
+    try {
+      // Tạo âm thanh đơn giản bằng Web Audio API
+      const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+      const oscillator = audioContext.createOscillator();
+      const gainNode = audioContext.createGain();
+
+      oscillator.connect(gainNode);
+      gainNode.connect(audioContext.destination);
+
+      // Tùy chỉnh âm thanh theo loại
+      switch (type) {
+        case 'move':
+          oscillator.frequency.value = 800;
+          oscillator.type = 'sine';
+          gainNode.gain.setValueAtTime(0.1 * this.volume, audioContext.currentTime);
+          gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.1);
+          oscillator.start(audioContext.currentTime);
+          oscillator.stop(audioContext.currentTime + 0.1);
+          break;
+        case 'win':
+          oscillator.frequency.value = 523.25; // C note
+          oscillator.type = 'sine';
+          gainNode.gain.setValueAtTime(0.2 * this.volume, audioContext.currentTime);
+          oscillator.start(audioContext.currentTime);
+          oscillator.stop(audioContext.currentTime + 0.3);
+          break;
+        case 'lose':
+          oscillator.frequency.value = 200;
+          oscillator.type = 'sawtooth';
+          gainNode.gain.setValueAtTime(0.2 * this.volume, audioContext.currentTime);
+          oscillator.start(audioContext.currentTime);
+          oscillator.stop(audioContext.currentTime + 0.3);
+          break;
+        case 'draw':
+          oscillator.frequency.value = 400;
+          oscillator.type = 'sine';
+          gainNode.gain.setValueAtTime(0.15 * this.volume, audioContext.currentTime);
+          oscillator.start(audioContext.currentTime);
+          oscillator.stop(audioContext.currentTime + 0.2);
+          break;
+        case 'message':
+          oscillator.frequency.value = 600;
+          oscillator.type = 'sine';
+          gainNode.gain.setValueAtTime(0.1 * this.volume, audioContext.currentTime);
+          gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.15);
+          oscillator.start(audioContext.currentTime);
+          oscillator.stop(audioContext.currentTime + 0.15);
+          break;
+        case 'click':
+          oscillator.frequency.value = 1000;
+          oscillator.type = 'square';
+          gainNode.gain.setValueAtTime(0.05 * this.volume, audioContext.currentTime);
+          gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.05);
+          oscillator.start(audioContext.currentTime);
+          oscillator.stop(audioContext.currentTime + 0.05);
+          break;
+        default:
+          oscillator.frequency.value = 500;
+          oscillator.type = 'sine';
+          gainNode.gain.setValueAtTime(0.1 * this.volume, audioContext.currentTime);
+          oscillator.start(audioContext.currentTime);
+          oscillator.stop(audioContext.currentTime + 0.1);
+      }
+    } catch (error) {
+      console.warn('Sound playback error:', error);
     }
+  }
 
-    /**
-     * Preload sounds
-     */
-    preloadSounds(soundList) {
-        soundList.forEach(({ name, src }) => {
-            const audio = new Audio(src);
-            audio.preload = 'auto';
-            audio.volume = this.volume;
-            this.sounds[name] = audio;
-        });
-    }
+  toggleMute() {
+    this.muted = !this.muted;
+    localStorage.setItem('soundEnabled', (!this.muted).toString());
+    return this.muted;
+  }
 
-    /**
-     * Play sound
-     */
-    play(soundName) {
-        if (!this.enabled) return;
+  setVolume(volume) {
+    this.volume = Math.max(0, Math.min(1, volume));
+  }
 
-        const sound = this.sounds[soundName];
-        if (!sound) {
-            console.warn(`Sound "${soundName}" not found`);
-            return;
-        }
-
-        // Clone audio to allow multiple simultaneous plays
-        const audioClone = sound.cloneNode();
-        audioClone.volume = this.volume;
-
-        audioClone.play().catch(error => {
-            console.warn('Audio play failed:', error);
-        });
-    }
-
-    /**
-     * Play with custom volume
-     */
-    playWithVolume(soundName, volume) {
-        if (!this.enabled) return;
-
-        const sound = this.sounds[soundName];
-        if (!sound) return;
-
-        const audioClone = sound.cloneNode();
-        audioClone.volume = Math.min(1, Math.max(0, volume));
-
-        audioClone.play().catch(error => {
-            console.warn('Audio play failed:', error);
-        });
-    }
-
-    /**
-     * Loop sound
-     */
-    loop(soundName) {
-        if (!this.enabled) return;
-
-        const sound = this.sounds[soundName];
-        if (!sound) return;
-
-        sound.loop = true;
-        sound.volume = this.volume;
-        sound.play().catch(error => {
-            console.warn('Audio loop failed:', error);
-        });
-    }
-
-    /**
-     * Stop sound
-     */
-    stop(soundName) {
-        const sound = this.sounds[soundName];
-        if (!sound) return;
-
-        sound.pause();
-        sound.currentTime = 0;
-        sound.loop = false;
-    }
-
-    /**
-     * Stop all sounds
-     */
-    stopAll() {
-        Object.values(this.sounds).forEach(sound => {
-            sound.pause();
-            sound.currentTime = 0;
-            sound.loop = false;
-        });
-    }
-
-    /**
-     * Set volume (0-1)
-     */
-    setVolume(volume) {
-        this.volume = Math.min(1, Math.max(0, volume));
-
-        Object.values(this.sounds).forEach(sound => {
-            sound.volume = this.volume;
-        });
-
-        this.saveSettings();
-    }
-
-    /**
-     * Enable/disable sounds
-     */
-    setEnabled(enabled) {
-        this.enabled = enabled;
-
-        if (!enabled) {
-            this.stopAll();
-        }
-
-        this.saveSettings();
-    }
-
-    /**
-     * Toggle sound
-     */
-    toggle() {
-        this.setEnabled(!this.enabled);
-        return this.enabled;
-    }
-
-    /**
-     * Save settings to localStorage
-     */
-    saveSettings() {
-        localStorage.setItem('soundSettings', JSON.stringify({
-            enabled: this.enabled,
-            volume: this.volume
-        }));
-    }
-
-    /**
-     * Get current settings
-     */
-    getSettings() {
-        return {
-            enabled: this.enabled,
-            volume: this.volume
-        };
-    }
+  isMuted() {
+    return this.muted;
+  }
 }
 
-// Create singleton instance
-const soundManager = new SoundManager();
+export const soundManager = new SoundManager();
 
-// Preload default sounds
-soundManager.preloadSounds([
-    { name: 'click', src: '/sounds/click.mp3' },
-    { name: 'move', src: '/sounds/move.mp3' },
-    { name: 'win', src: '/sounds/win.mp3' },
-    { name: 'lose', src: '/sounds/lose.mp3' },
-    { name: 'draw', src: '/sounds/draw.mp3' },
-    { name: 'notification', src: '/sounds/notification.mp3' },
-    { name: 'message', src: '/sounds/message.mp3' },
-    { name: 'join', src: '/sounds/join.mp3' },
-    { name: 'leave', src: '/sounds/leave.mp3' },
-    { name: 'error', src: '/sounds/error.mp3' },
-    { name: 'success', src: '/sounds/success.mp3' }
-]);
+// Hàm tiện ích
+export const playSound = (type) => {
+  soundManager.playSound(type);
+};
+
+export const toggleMute = () => {
+  return soundManager.toggleMute();
+};
+
+export const setVolume = (volume) => {
+  soundManager.setVolume(volume);
+};
 
 export default soundManager;
