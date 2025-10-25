@@ -1,13 +1,20 @@
-// message.model.js
+const mongoose = require('mongoose');
+const { Schema } = mongoose;
 
-// Lưu trữ tin nhắn giữa người chơi.
 
-// Trường dữ liệu chính:
 
-// id, senderId, receiverId (hoặc roomId).
+const Messagechema = new Schema({
+  roomId: { type: Schema.Types.ObjectId, ref: 'Room', default: null, index: true }, // null => private msg
+  senderId: { type: Schema.Types.ObjectId, ref: 'User', required: true, index: true }, // Người gửi
+  receiverId: { type: Schema.Types.ObjectId, ref: 'User', default: null, index: true }, // nếu private
 
-// content, type (text / emoji / system).
+  type: { type: String, enum: ['text','emoji','sticker'], default: 'text' }, // Loại tin nhắn
+  message: { type: String }, // Tin nhắn
 
-// createdAt.
+  createdAt: { type: Date, default: Date.now, index: true } // Thời gian
+});
+// index composite for room chat ordering
+Messagechema.index({ roomId: 1, createdAt: -1 });
 
-// Quan hệ: user, room.
+
+module.exports = mongoose.model('Message', Messagechema);

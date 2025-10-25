@@ -1,13 +1,12 @@
-// friend.model.js
+const mongoose = require('mongoose');
+const { Schema } = mongoose;
 
-// Lưu quan hệ bạn bè và lời mời kết bạn.
+const FriendSchema = new Schema({
+  requester: { type: Schema.Types.ObjectId, ref: 'User', required: true, index: true }, // Yêu cầu
+  addressee: { type: Schema.Types.ObjectId, ref: 'User', required: true, index: true }, // Người nhận
+  status: { type: String, enum: ['pending','accepted','blocked'], default: 'pending' }, // Trạng thái
+  createdAt: { type: Date, default: Date.now } // Ngày tạo
+});
+FriendSchema.index({ requester: 1, addressee: 1 }, { unique: true });
 
-// Trường dữ liệu chính:
-
-// id, requesterId, receiverId.
-
-// status (pending / accepted / rejected).
-
-// createdAt, updatedAt.
-
-// Hỗ trợ lấy danh sách bạn bè, gợi ý kết nối.
+module.exports = mongoose.model('Friend', FriendSchema);
