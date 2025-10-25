@@ -1,9 +1,15 @@
-// db.js
+// src/config/db.js
+const mongoose = require("mongoose");
 
-// Kết nối cơ sở dữ liệu (PostgreSQL/MySQL).
+const connectDB = async () => {
+  try {
+    const conn = await mongoose.connect(process.env.MONGO_URI);
 
-// Nhiệm vụ:
+    console.log(`Connected MongoDB: ${conn.connection.host}`);
+  } catch (error) {
+    console.error("Connection MongoDB Error:", error);
+    process.exit(1);
+  }
+};
 
-// Khởi tạo và export instance ORM (Prisma / Sequelize / Knex).
-
-// Kiểm tra kết nối khi khởi động server.
+module.exports = connectDB;
