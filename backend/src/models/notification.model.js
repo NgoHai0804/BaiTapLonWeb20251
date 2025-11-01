@@ -19,3 +19,5 @@ const NotificationSchema = new Schema({
   isRead: { type: Boolean, default: false, index: true }, // Đã đọc?
   createdAt: { type: Date, default: Date.now }, // Thời gian
 });
+
+module.exports = mongoose.model("Notification", NotificationSchema);

@@ -1,7 +1,6 @@
 const mongoose = require('mongoose');
 const { Schema } = mongoose;
 
-
 const RoomPlayerSchema = new Schema({
   userId: { type: Schema.Types.ObjectId, ref: 'User', required: true },  // ID người chơi
   isHost: { type: Boolean, default: false }, // Có phải chủ phòng không (người tạo)
@@ -10,9 +9,8 @@ const RoomPlayerSchema = new Schema({
   sessionId: { type: String } // ID phiên socket hiện tại (để reconnect nhanh nếu rớt mạng)
 });
 
-
 const RoomSchema = new Schema({
-  name: { type: String }, // Tên hiển thị của phòng
+  name: { type: String }, // Tên hiển thị của phòng (đổi từ roomName theo diagram)
   passwordHash: { type: String, default: null }, // Mật khẩu phòng 
   hostId: { type: Schema.Types.ObjectId, ref: 'User', index: true }, // ID chủ phòng
   maxPlayers: { type: Number, default: 2 },  // Giới hạn số người chơi trong phòng (2–4)
@@ -32,6 +30,5 @@ const RoomSchema = new Schema({
  */
 RoomSchema.index({ status: 1 });
 RoomSchema.index({ hostId: 1 });
-
 
 module.exports = mongoose.model('Room', RoomSchema);
