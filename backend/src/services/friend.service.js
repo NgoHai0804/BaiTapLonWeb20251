@@ -69,7 +69,7 @@ async function sendFriendRequest(requesterId, addresseeId) {
 }
 
 
-// 2️⃣ Chấp nhận lời mời
+// 2️ Chấp nhận lời mời
 async function acceptFriendRequest(userAId, userBId) {
   try {
     console.log("acceptFriendRequest:", userAId, userBId);
@@ -103,7 +103,7 @@ async function acceptFriendRequest(userAId, userBId) {
 }
 
 
-// 3️⃣ Hủy lời mời hoặc từ chối
+// 3️ Hủy lời mời hoặc từ chối
 async function cancelFriendRequest(userAId, userBId) {
   try {
     console.log("cancelFriendRequest:", userAId, userBId);
@@ -127,7 +127,7 @@ async function cancelFriendRequest(userAId, userBId) {
   }
 }
 
-// 4️⃣ Xóa bạn (unfriend)
+// 4️ Xóa bạn (unfriend)
 async function removeFriend(userAId, userBId) {
   try {
     const friendRecord = await Friend.findOne({
@@ -149,7 +149,7 @@ async function removeFriend(userAId, userBId) {
 }
 
 
-// 5️⃣ Lấy danh sách bạn bè
+// 5️ Lấy danh sách bạn bè
 async function getFriendsList(userId) {
   try {
     const friends = await Friend.find({
@@ -173,7 +173,7 @@ async function getFriendsList(userId) {
   }
 }
 
-// 6️⃣ Lấy danh sách lời mời chờ
+// 6️ Lấy danh sách lời mời chờ
 async function getPendingRequests(userId) {
   try {
     const requests = await Friend.find({
@@ -188,7 +188,7 @@ async function getPendingRequests(userId) {
   }
 }
 
-// 7️⃣ Kiểm tra quan hệ giữa 2 người
+// 7️ Kiểm tra quan hệ giữa 2 người
 async function getRelationshipStatus(userAId, userBId) {
   try {
     const rel = await Friend.findOne({
@@ -204,7 +204,7 @@ async function getRelationshipStatus(userAId, userBId) {
   }
 }
 
-// Tìm người dùng theo nickname HOẶC userID (loại trừ bản thân) - Ưu tiên userID
+// 8 Tìm người dùng theo nickname HOẶC userID (loại trừ bản thân) - Ưu tiên userID
 async function searchUsers(nickname, userID, excludeUserId) {
   try {
     if (!excludeUserId) {

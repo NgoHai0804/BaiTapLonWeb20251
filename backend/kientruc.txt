@@ -191,7 +191,7 @@ Frontend folder	                  Backend tương ứng	                        
     Giai đoạn	      Nội dung	                                       Công nghệ chính	                Thời gian
 ✅  1	              Cấu trúc dự án, setup Express + Prisma	          Node.js, Express	                1 tuần
 ✅  2              	API Auth (login/register, JWT)	                  Express, JWT	                    1 tuần
-    3	              CRUD Room + Friend	                              Express, PostgreSQL	            1–2 tuần
+✅  3	              CRUD Room + Friend	                              Express, PostgreSQL	            1–2 tuần
     4	              Socket.IO: join room, move, chat	                Socket.IO	                        2 tuần
     5	              Lưu game history, AI Bot	                        Node.js, Minimax	              1–2 tuần
     6	              Test + deploy	                                    Jest, Docker	                    1 tuần
