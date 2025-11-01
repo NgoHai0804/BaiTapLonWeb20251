@@ -9,3 +9,5 @@
 // Xử lý "friend:invite", "friend:accept", "friend:cancel".
 
 // Cập nhật trạng thái bạn bè ngay lập tức trên giao diện người dùng.
+
+// 3. Mời vào phòng socket

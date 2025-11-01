@@ -1,24 +1,14 @@
 🧱 Tổng quan Backend
 
 Công nghệ chính
-
 Runtime: Node.js
-
 Framework: Express.js / Fastify
-
 Realtime: Socket.IO
-
-Database: PostgreSQL (ORM: Prisma hoặc Sequelize)
-
+Database: MongoDB
 Auth: JWT (Access + Refresh Token)
-
 Cache/Realtime Support (optional): Redis
-
 File cấu hình: .env, .env.example, config/
-
 Dev Tool: Nodemon, ESLint, Prettier
-
-
 
 
 
@@ -112,11 +102,6 @@ caro-online-backend/
   Notification realtime	                             Socket.IO (friend_online, invite_room)	                            Push từ backend → client
 
 
-
-
-
-
-
 🧠 Cấu trúc Socket.IO (Realtime)
 
 
@@ -173,58 +158,6 @@ export default (io, socket) => {
 
 
 
-
-
-🗄️ Database Model (ví dụ dùng Prisma)
-        model User {
-          id          Int       @id @default(autoincrement())
-          username    String    @unique
-          password    String
-          email       String    @unique
-          avatarUrl   String?
-          friends     Friend[]  @relation("FriendUser")
-          rooms       Room[]    @relation("RoomPlayers")
-          messages    Message[]
-          gameHistory GameHistory[]
-        }
-
-        model Room {
-          id          Int       @id @default(autoincrement())
-          name        String
-          password    String?
-          players     User[]    @relation("RoomPlayers")
-          messages    Message[]
-          createdAt   DateTime  @default(now())
-        }
-
-        model Message {
-          id        Int      @id @default(autoincrement())
-          content   String
-          senderId  Int
-          roomId    Int?
-          receiverId Int?
-          createdAt DateTime @default(now())
-        }
-
-        model GameHistory {
-          id        Int      @id @default(autoincrement())
-          roomId    Int
-          winnerId  Int
-          moves     Json
-          createdAt DateTime @default(now())
-        }
-
-        model Friend {
-          id        Int      @id @default(autoincrement())
-          userId    Int
-          friendId  Int
-          status    String   // pending, accepted, blocked
-        }
-
-
-
-
-
 🔒 Middleware – Auth (JWT)
       import jwt from "jsonwebtoken";
 
@@ -241,6 +174,7 @@ export default (io, socket) => {
         }
       };
 
+
 💬 Mối liên kết Frontend ↔ Backend
 Frontend folder	                  Backend tương ứng	                            Vai trò
 /src/services/api	                /routes + /controllers	                   Giao tiếp REST API
@@ -254,13 +188,13 @@ Frontend folder	                  Backend tương ứng	                        
 
 
 🚀 Lộ trình triển khai Backend
-Giai đoạn	Nội dung	Công nghệ chính	Thời gian
-1	Cấu trúc dự án, setup Express + Prisma	Node.js, Express	1 tuần
-2	API Auth (login/register, JWT)	Express, JWT	1 tuần
-3	CRUD Room + Friend	Express, PostgreSQL	1–2 tuần
-4	Socket.IO: join room, move, chat	Socket.IO	2 tuần
-5	Lưu game history, AI Bot	Node.js, Minimax	1–2 tuần
-6	Test + deploy	Jest, Docker	1 tuần
+    Giai đoạn	      Nội dung	                                       Công nghệ chính	                Thời gian
+✅  1	              Cấu trúc dự án, setup Express + Prisma	          Node.js, Express	                1 tuần
+✅  2              	API Auth (login/register, JWT)	                  Express, JWT	                    1 tuần
+    3	              CRUD Room + Friend	                              Express, PostgreSQL	            1–2 tuần
+    4	              Socket.IO: join room, move, chat	                Socket.IO	                        2 tuần
+    5	              Lưu game history, AI Bot	                        Node.js, Minimax	              1–2 tuần
+    6	              Test + deploy	                                    Jest, Docker	                    1 tuần
 
 
 ✅ Kết luận

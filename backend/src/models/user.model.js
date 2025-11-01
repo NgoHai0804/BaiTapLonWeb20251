@@ -34,7 +34,4 @@ const UserSchema = new Schema({
   lastOnline: { type: Date }, // Thời gian online gần nhất --> cập nhật trong socket real-time
 });
 
-UserSchema.index({ username: 1 });
-UserSchema.index({ status: 1 });
-
 module.exports = mongoose.model("User", UserSchema);

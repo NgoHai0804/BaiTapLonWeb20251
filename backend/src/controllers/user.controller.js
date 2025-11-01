@@ -1,113 +1,56 @@
 // user.controller.js
-
 // Quản lý thông tin người dùng và hồ sơ cá nhân.
-
 // Chức năng:
+// - Lấy thông tin chi tiết người dùng theo ID hoặc token.
+// - Cập nhật thông tin cá nhân, avatar.
+// - Cung cấp dữ liệu cho leaderboard (nếu có).
 
-// Lấy thông tin chi tiết người dùng theo ID hoặc token.
+const response = require("../utils/response");
+const userService = require("../services/user.service");
+const logger = require("../utils/logger");
 
-// Cập nhật thông tin cá nhân, avatar.
+// Lấy thông tin profile người dùng
+async function getProfile(req, res) {
+  try {
+    const user = await userService.getUserProfile(req.user._id);
 
-// Cung cấp dữ liệu cho leaderboard (nếu có).
+    if (!user) return response.error(res, "User not found", 404);
 
-const User = require("../models/user.model");
-const bcrypt = require("bcrypt");
-
-function checkData(value, lengthMin, lengthMax) {
-  if (!value || value.length < lengthMin || value.length > lengthMax) {
-    return false;
+    return response.success(res, user, "Get profile success");
+  } catch (err) {
+    logger.error(`getProfile error: ${err}`);
+    return response.error(res, err.message, 500);
   }
-
-  const specialCharRegex = /[^a-zA-Z0-9_]/;
-  if (specialCharRegex.test(value)) {
-    return false;
-  }
-
-  return true;
 }
 
-// Lấy thông tin --> Dưa trên JWT token
-exports.getProfile = async (req, res) => {
+// Cập nhật profile
+async function updateProfile(req, res) {
   try {
-    const user = await User.findById(req.user.id).select("-passwordHash"); // Loại bỏ trường passwordHash
+    const updatedUser = await userService.updateUserProfile(req.user._id, req.body);
 
-    if (!user)
-      return res
-        .status(404)
-        .json({ success: false, message: "User not found" });
+    if (!updatedUser)
+      return response.error(res, "Update failed", 400);
 
-    res.json({ success: true, user });
+    return response.success(res, updatedUser, "Update profile success");
   } catch (err) {
-    console.error("getProfile error:", err);
-    res.status(500).json({ success: false, message: "Server error" });
+    logger.error(`updateProfile error: ${err}`);
+    return response.error(res, err.message, 400);
   }
-};
+}
 
-// Cập nhật thông tin cá nhân
-exports.updateProfile = async (req, res) => {
+// Lấy leaderboard
+async function getLeaderboard(req, res) {
   try {
-    const { nickname, avatarUrl, password } = req.body;
-    const updateData = {};
-    if (avatarUrl) updateData.avatarUrl = avatarUrl;
-
-    if (!checkData(nickname, 5, 15)) {
-      return res.status(400).json({
-        success: false,
-        message:
-          "Nickname is not valid. Length must be between 5 and 15 characters.",
-      });
-    } else {
-      updateData.nickname = nickname;
-    }
-
-    const existingNickname = await User.findOne({ nickname });
-    if (existingNickname) {
-      return res.status(400).json({
-        success: false,
-        message: "Nickname already exists.",
-      }); // nick name đã tồ tại
-    }
-
-    if (!checkData(password, 8, 20)) {
-      return res.status(400).json({
-        success: false,
-        message:
-          "Password is not valid. Length must be between 5 and 15 characters.",
-      });
-    } else {
-      const salt = await bcrypt.genSalt(10);
-      updateData.passwordHash = await bcrypt.hash(password, salt);
-    }
-
-    const user = await User.findByIdAndUpdate(req.user.id, updateData, {
-      new: true,
-    }).select("-passwordHash");
-    res.json({ success: true, user });
+    const users = await userService.getLeaderboard(req.query.gameId);
+    return response.success(res, users, "Get leaderboard success");
   } catch (err) {
-    res.status(500).json({ success: false, message: err.message });
+    logger.error(`getLeaderboard error: ${err}`);
+    return response.error(res, err.message, 500);
   }
-};
+}
 
-// Lấy dữ liệu cho leaderboard
-exports.getLeaderboard = async (req, res) => {
-  try {
-    const { gameId = "caro" } = req.query;
-
-    const users = await User.find(
-      { "gameStats.gameId": gameId },
-      {
-        username: 1,
-        nickname: 1,
-        avatarUrl: 1,
-        "gameStats.$": 1,
-      }
-    )
-      .sort({ "gameStats.score": -1 })
-      .limit(20);
-
-    res.json({ success: true, users });
-  } catch (err) {
-    console.error("❌ getLeaderboard error:", err);
-    res.status(500).json({ success: false, message: "Server error" });
-  }
+module.exports = {
+  getProfile,
+  updateProfile,
+  getLeaderboard,
 };

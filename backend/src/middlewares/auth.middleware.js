@@ -17,22 +17,31 @@ const jwt = require("jsonwebtoken");
 
 module.exports = (req, res, next) => {
   try {
-    if (!req.header("Authorization")) {
+    const authHeader = req.header("Authorization");
+    if (!authHeader) {
       return res
         .status(401)
         .json({ success: false, message: "No token provided" });
     }
-    const token = req.header("Authorization").replace("Bearer ", "");
-    if (!token)
+
+    const token = authHeader.replace("Bearer ", "");
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+
+    // 🔧 Chuẩn hóa thông tin user để các nơi khác luôn dùng _id
+    req.user = {
+      _id: decoded._id || decoded.id,
+      username: decoded.username,
+      email: decoded.email,
+    };
+
+    if (!req.user._id)
       return res
         .status(401)
-        .json({ success: false, message: "No token provided" });
+        .json({ success: false, message: "Token invalid: missing user id" });
 
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    req.user = decoded;
     next();
   } catch (err) {
-    console.error(err);
+    console.error("auth.middleware error:", err);
     return res.status(401).json({ success: false, message: "Invalid token" });
   }
 };

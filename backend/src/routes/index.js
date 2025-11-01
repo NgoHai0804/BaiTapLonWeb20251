@@ -8,5 +8,6 @@ const router = express.Router();
 
 router.use("/auth", require("./auth.routes"));
 router.use("/user", require("./user.routes"));
+router.use("/friend", require("./friend.routes"));
 
 module.exports = router;
