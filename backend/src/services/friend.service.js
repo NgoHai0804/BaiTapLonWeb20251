@@ -4,42 +4,47 @@ const Friend = require("../models/friend.model");
 const User = require("../models/user.model");
 const logger = require("../utils/logger");
 
+
 const mongoose = require('mongoose');
 
 // Nếu có socket.io instance
 let io = null;
 
+// Để thông báo socket sau này
 function setSocketInstance(socketInstance) {
   io = socketInstance;
 }
 
-
-
 // ------------------------
 // CÁC HÀM NGHIỆP VỤ CHÍNH
 // ------------------------
-
 
 // 1 Gửi lời mời kết bạn
 async function sendFriendRequest(requesterId, addresseeId) {
   try {
     if (requesterId === addresseeId)
       throw new Error("Không thể gửi lời mời cho chính mình");
+
     const addressee = await User.findById(addresseeId);
     if (!addressee) throw new Error("User nhận không tồn tại");
+
+
     const existing = await Friend.findOne({
       $or: [
         { requester: requesterId, addressee: addresseeId },
         { requester: addresseeId, addressee: requesterId },
       ],
     });
+
     if (existing) {
       if (existing.status === "pending") {
         throw new Error("Đã tồn tại lời mời kết bạn đang chờ xử lý");
       }
+
       if (existing.status === "accepted") {
         throw new Error("Hai người đã là bạn bè");
       }
+
       if (existing.status === "canceled" || existing.status === "removed") {
         // Gửi lại: cập nhật thành pending mới
         existing.status = "pending";
@@ -51,11 +56,14 @@ async function sendFriendRequest(requesterId, addresseeId) {
         return existing;
       }
     }
+
     const newRequest = await Friend.create({
       requester: requesterId,
       addressee: addresseeId,
     });
+
     logger.info(`User ${requesterId} sent friend request to ${addresseeId}`);
+
     if (io)
       io.to(addresseeId.toString()).emit("friend:requestReceived", newRequest);
     return newRequest;
@@ -73,6 +81,7 @@ async function sendFriendRequest(requesterId, addresseeId) {
 async function acceptFriendRequest(userAId, userBId) {
   try {
     console.log("acceptFriendRequest:", userAId, userBId);
+
     // Tìm xem giữa 2 user có lời mời pending nào không
     const request = await Friend.findOne({
       $or: [
@@ -80,9 +89,9 @@ async function acceptFriendRequest(userAId, userBId) {
         { requester: userBId, addressee: userAId, status: "pending" },
       ],
     });
+
     // Nếu không có lời mời thì báo lỗi
     if (!request) throw new Error("Không tìm thấy lời mời kết bạn");
-
 
     // Cập nhật trạng thái thành accepted
     request.status = "accepted";
@@ -136,11 +145,13 @@ async function removeFriend(userAId, userBId) {
         { requester: userBId, addressee: userAId, status: "accepted" },
       ],
     });
+
     if (!friendRecord) throw new Error("Không có mối quan hệ để xóa");
     friendRecord.status = "removed";
     await friendRecord.save();
+
     logger.info(`User ${userAId} removed friend ${userBId}`);
-    if (io) io.to(userBId.toString()).emit("friend:removed", userAId);
+
     return true;
   } catch (err) {
     logger.error("removeFriend error: %o", err);
@@ -160,11 +171,13 @@ async function getFriendsList(userId) {
     })
       .populate("requester", "username nickname avatarUrl status")
       .populate("addressee", "username nickname avatarUrl status");
+    
     const result = friends.map((f) =>
       f.requester._id.toString() === userId.toString()
         ? f.addressee
         : f.requester
     );
+    
     logger.info(`Fetched friends list for user ${userId}`);
     return result;
   } catch (err) {
@@ -180,6 +193,7 @@ async function getPendingRequests(userId) {
       addressee: userId,
       status: "pending",
     }).populate("requester", "username nickname avatarUrl");
+    
     logger.info(`Fetched pending friend requests for user ${userId}`);
     return requests;
   } catch (err) {
@@ -197,6 +211,7 @@ async function getRelationshipStatus(userAId, userBId) {
         { requester: userBId, addressee: userAId },
       ],
     });
+    
     return rel ? rel.status : "none";
   } catch (err) {
     logger.error("getRelationshipStatus error: %o", err);
@@ -217,8 +232,10 @@ async function searchUsers(nickname, userID, excludeUserId) {
     // Ưu tiên userID nếu có (tìm chính xác 1 user)
     if (userID) {
       console.log("Input userID:", userID, typeof userID, userID.length); // Debug log
+      
       // Trim để loại bỏ space thừa nếu có
       const trimmedUserID = userID.trim();
+      
       try {
         const userIdObj = new mongoose.Types.ObjectId(trimmedUserID);
         // Nếu tìm userID chính là excludeUserId, return empty
@@ -228,14 +245,17 @@ async function searchUsers(nickname, userID, excludeUserId) {
         }
         query._id = userIdObj; // Tìm chính xác userID
         console.log("Searching by userID:", userIdObj);
+      
       } catch (err) {
         console.error("ObjectId creation error:", err); // Debug log
         throw new Error("userID không hợp lệ");
       }
+
     } else if (nickname && nickname.length > 0) {
       // Chỉ tìm theo nickname nếu KHÔNG có userID
       query.nickname = { $regex: nickname, $options: "i" };
       console.log("Searching by nickname:", nickname);
+    
     } else {
       // Không có tham số tìm kiếm hợp lệ nào
       console.log("No valid search params provided");
