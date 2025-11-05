@@ -1,283 +1,260 @@
-import { useState, useEffect } from 'react';
+import  { useEffect, useState, useRef, useCallback } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
-import { useNavigate } from 'react-router-dom';
 import { toast } from 'react-toastify';
-import {
-    fetchRooms,
-    createRoom as createRoomAction,
-    joinRoom as joinRoomAction,
-    setRooms,
-    addRoom,
-    removeRoom,
-    updateRoom,
-    clearError,
-    clearActionSuccess
-} from '../../store/roomSlice';
-import { useSocket } from '../../hooks/useSocket';
-import RoomCard from '../../components/RoomCard/RoomCard';
-import CreateRoomModal from '../../components/CreateRoomModal/CreateRoomModal';
-import { FaPlus, FaSearch, FaFilter, FaUsers, FaSyncAlt } from 'react-icons/fa';
-import './Lobby.css';
+import { roomApi } from '../../services/api/roomApi';
+import { setRooms, updateRoom } from '../../store/roomSlice';
+import { gameSocket } from '../../services/socket/gameSocket';
+import LobbyHeader from './components/LobbyHeader';
+import SearchAndFilter from './components/SearchAndFilter';
+import RoomList from './components/RoomList';
 
 const Lobby = () => {
-    const dispatch = useDispatch();
-    const navigate = useNavigate();
-    const { rooms, loading, error, actionSuccess } = useSelector((state) => state.room);
-    const { user } = useSelector((state) => state.auth);
-    const { emit, on } = useSocket();
+  const navigate = useNavigate();
+  const location = useLocation();
+  const dispatch = useDispatch();
+  const { rooms } = useSelector((state) => state.room);
+  const [loading, setLoading] = useState(true);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [filter, setFilter] = useState('all');
+  
+  const refreshIntervalRef = useRef(null);
+  const lastActivityRef = useRef(Date.now());
+  const isUserActiveRef = useRef(true);
+  const previousPathnameRef = useRef(null);
+  const refreshFromEventRef = useRef(false);
+  const isMountedRef = useRef(false);
 
-    const [isModalOpen, setIsModalOpen] = useState(false);
-    const [searchQuery, setSearchQuery] = useState('');
-    const [filter, setFilter] = useState('all'); // 'all', 'available', 'full', 'playing'
-    const [passwordInput, setPasswordInput] = useState('');
-    const [selectedRoom, setSelectedRoom] = useState(null);
-    const [showPasswordModal, setShowPasswordModal] = useState(false);
-
-    // Fetch rooms on mount
-    useEffect(() => {
-        dispatch(fetchRooms());
-    }, [dispatch]);
-
-    // Socket event listeners
-    useEffect(() => {
-        const cleanupFunctions = [];
-
-        // Room created
-        const unsubscribeRoomCreated = on('room:created', (room) => {
-            console.log('Room created:', room);
-            dispatch(addRoom(room));
-            toast.info(`Phòng "${room.name}" vừa được tạo`);
-        });
-        cleanupFunctions.push(unsubscribeRoomCreated);
-
-        // Room updated
-        const unsubscribeRoomUpdated = on('room:updated', (room) => {
-            console.log('Room updated:', room);
-            dispatch(updateRoom(room));
-        });
-        cleanupFunctions.push(unsubscribeRoomUpdated);
-
-        // Room deleted
-        const unsubscribeRoomDeleted = on('room:deleted', (roomId) => {
-            console.log('Room deleted:', roomId);
-            dispatch(removeRoom(roomId));
-            toast.info('Một phòng vừa bị xóa');
-        });
-        cleanupFunctions.push(unsubscribeRoomDeleted);
-
-        // Rooms list (full refresh)
-        const unsubscribeRoomsList = on('rooms:list', (roomsList) => {
-            console.log('Rooms list:', roomsList);
-            dispatch(setRooms(roomsList));
-        });
-        cleanupFunctions.push(unsubscribeRoomsList);
-
-        // Cleanup
-        return () => {
-            cleanupFunctions.forEach(cleanup => cleanup && cleanup());
-        };
-    }, [on, dispatch]);
-
-    // Handle action success
-    useEffect(() => {
-        if (actionSuccess) {
-            toast.success('Thao tác thành công!');
-            dispatch(clearActionSuccess());
-            setIsModalOpen(false);
+  const loadRooms = useCallback(async (delayCheckUserRoom = 0) => {
+    try {
+      setLoading(true);
+      
+      const roomsPromise = roomApi.getRooms().catch(err => {
+        console.error('Lỗi khi tải danh sách phòng:', err);
+        return null;
+      });
+      
+      const userRoomCheckPromise = delayCheckUserRoom > 0
+        ? new Promise(resolve => {
+            setTimeout(async () => {
+              try {
+                const result = await roomApi.checkUserRoom();
+                resolve(result);
+              } catch (err) {
+                console.error('Lỗi khi kiểm tra phòng của user:', err);
+                resolve(null);
+              }
+            }, delayCheckUserRoom);
+          })
+        : roomApi.checkUserRoom().catch(err => {
+            console.error('Lỗi khi kiểm tra phòng của user:', err);
+            return null;
+          });
+      
+      const [roomsResponse, userRoomCheck] = await Promise.all([
+        roomsPromise,
+        userRoomCheckPromise
+      ]);
+      
+      let rooms = [];
+      if (roomsResponse) {
+        if (Array.isArray(roomsResponse)) {
+          rooms = roomsResponse;
+        } else if (roomsResponse?.data && Array.isArray(roomsResponse.data)) {
+          rooms = roomsResponse.data;
+        } else if (roomsResponse?.rooms && Array.isArray(roomsResponse.rooms)) {
+          rooms = roomsResponse.rooms;
         }
-    }, [actionSuccess, dispatch]);
+      }
+      
+      dispatch(setRooms(rooms));
+      
+      if (userRoomCheck?.inRoom && userRoomCheck?.room?._id) {
+        const roomId = userRoomCheck.room._id;
+        console.log('User đang ở trong phòng, chuyển đến phòng:', roomId);
+        navigate(`/game/${roomId}`, { replace: true });
+        return;
+      }
+      
+      if (!roomsResponse) {
+        const errorMessage = 'Không thể tải danh sách phòng';
+        toast.error(errorMessage);
+        dispatch(setRooms([]));
+      }
+    } catch (error) {
+      const errorMessage = error.response?.data?.message || error.message || 'Không thể tải danh sách phòng';
+      toast.error(errorMessage);
+      console.error('Lỗi khi tải dữ liệu:', error);
+      dispatch(setRooms([]));
+    } finally {
+      setLoading(false);
+    }
+  }, [dispatch, navigate]);
 
-    // Handle errors
-    useEffect(() => {
-        if (error) {
-            toast.error(error);
-            dispatch(clearError());
-        }
-    }, [error, dispatch]);
+  const updateActivity = useCallback(() => {
+    lastActivityRef.current = Date.now();
+    isUserActiveRef.current = true;
+  }, []);
 
-    // Create room handler
-    const handleCreateRoom = async (roomData) => {
-        const result = await dispatch(createRoomAction(roomData));
-
-        if (createRoomAction.fulfilled.match(result)) {
-            const createdRoom = result.payload;
-
-            // Emit socket event
-            emit('create_room', roomData);
-
-            // Navigate to room
-            navigate(`/room/${createdRoom._id}`);
-        }
+  useEffect(() => {
+    const checkAndRefresh = () => {
+      const timeSinceLastActivity = Date.now() - lastActivityRef.current;
+      if (timeSinceLastActivity >= 2000) {
+        isUserActiveRef.current = false;
+        loadRooms();
+      }
     };
 
-    // Join room handler
-    const handleJoinRoom = (room) => {
-        if (room.isPrivate) {
-            // Show password modal
-            setSelectedRoom(room);
-            setShowPasswordModal(true);
-        } else {
-            // Join directly
-            joinRoomDirect(room._id);
-        }
+    refreshIntervalRef.current = setInterval(checkAndRefresh, 10000);
+
+    return () => {
+      if (refreshIntervalRef.current) {
+        clearInterval(refreshIntervalRef.current);
+        refreshIntervalRef.current = null;
+      }
+    };
+  }, [loadRooms]);
+
+  useEffect(() => {
+    const events = ['mousedown', 'mousemove', 'keypress', 'scroll', 'touchstart', 'click'];
+    
+    const handleActivity = () => {
+      updateActivity();
     };
 
-    // Join room with password
-    const handlePasswordSubmit = () => {
-        if (!passwordInput) {
-            toast.warning('Vui lòng nhập mật khẩu');
-            return;
-        }
-        joinRoomDirect(selectedRoom._id, passwordInput);
-        setShowPasswordModal(false);
-        setPasswordInput('');
-        setSelectedRoom(null);
-    };
-
-    // Join room direct
-    const joinRoomDirect = async (roomId, password = null) => {
-        const result = await dispatch(joinRoomAction({ roomId, password }));
-
-        if (joinRoomAction.fulfilled.match(result)) {
-            // Emit socket event
-            emit('join_room', { roomId, userId: user._id });
-
-            // Navigate to room
-            navigate(`/room/${roomId}`);
-        }
-    };
-
-    // Refresh rooms
-    const handleRefresh = () => {
-        dispatch(fetchRooms());
-        toast.info('Đã làm mới danh sách phòng');
-    };
-
-    // Filter rooms
-    const filteredRooms = rooms.filter(room => {
-        // Search filter
-        if (searchQuery && !room.name.toLowerCase().includes(searchQuery.toLowerCase())) {
-            return false;
-        }
-
-        // Status filter
-        if (filter === 'available' && (room.status === 'playing' || room.players?.length >= room.maxPlayers)) {
-            return false;
-        }
-        if (filter === 'full' && room.players?.length < room.maxPlayers) {
-            return false;
-        }
-        if (filter === 'playing' && room.status !== 'playing') {
-            return false;
-        }
-
-        return true;
+    events.forEach(event => {
+      window.addEventListener(event, handleActivity, { passive: true });
     });
 
-    return (
-        <div className="lobby-container">
-            {/* Header */}
-            <div className="lobby-header">
-                <div className="header-left">
-                    <h1>Sảnh chờ</h1>
-                    <div className="online-counter">
-                        <FaUsers />
-                        <span>{rooms.reduce((acc, r) => acc + (r.players?.length || 0), 0)} người đang chơi</span>
-                    </div>
-                </div>
-                <div className="header-right">
-                    <button className="btn-create" onClick={() => setIsModalOpen(true)}>
-                        <FaPlus /> Tạo phòng
-                    </button>
-                </div>
-            </div>
+    return () => {
+      events.forEach(event => {
+        window.removeEventListener(event, handleActivity);
+      });
+    };
+  }, [updateActivity]);
 
-            {/* Toolbar */}
-            <div className="lobby-toolbar">
-                {/* Search */}
-                <div className="search-box">
-                    <FaSearch className="search-icon" />
-                    <input
-                        type="text"
-                        placeholder="Tìm kiếm phòng..."
-                        value={searchQuery}
-                        onChange={(e) => setSearchQuery(e.target.value)}
-                    />
-                </div>
+  useEffect(() => {
+    const handleLobbyRefresh = () => {
+      refreshFromEventRef.current = true;
+      loadRooms();
+      setTimeout(() => {
+        refreshFromEventRef.current = false;
+      }, 100);
+    };
 
-                {/* Filter */}
-                <div className="filter-group">
-                    <FaFilter className="filter-icon" />
-                    <select value={filter} onChange={(e) => setFilter(e.target.value)}>
-                        <option value="all">Tất cả</option>
-                        <option value="available">Khả dụng</option>
-                        <option value="full">Đầy</option>
-                        <option value="playing">Đang chơi</option>
-                    </select>
-                </div>
+    window.addEventListener('lobby-refresh', handleLobbyRefresh);
+    return () => {
+      window.removeEventListener('lobby-refresh', handleLobbyRefresh);
+    };
+  }, [loadRooms]);
 
-                {/* Refresh */}
-                <button className="btn-refresh" onClick={handleRefresh}>
-                    <FaSyncAlt /> Làm mới
-                </button>
-            </div>
+  useEffect(() => {
+    if (location.state?.fromGameRoom) {
+      loadRooms(800);
+      window.history.replaceState({}, document.title);
+      return;
+    }
+    
+    const currentPathname = location.pathname;
+    const previousPathname = previousPathnameRef.current;
+    
+    if (refreshFromEventRef.current) {
+      previousPathnameRef.current = currentPathname;
+      isMountedRef.current = true;
+      return;
+    }
+    
+    if (!isMountedRef.current || previousPathname === null) {
+      loadRooms();
+      isMountedRef.current = true;
+    } else if (currentPathname === '/lobby' && previousPathname !== currentPathname && previousPathname !== '') {
+      loadRooms();
+    }
+    
+    previousPathnameRef.current = currentPathname;
+  }, [location.pathname, location.state, loadRooms]);
 
-            {/* Rooms Grid */}
-            <div className="lobby-content">
-                {loading && rooms.length === 0 ? (
-                    <div className="loading-state">
-                        <div className="spinner"></div>
-                        <p>Đang tải danh sách phòng...</p>
-                    </div>
-                ) : filteredRooms.length === 0 ? (
-                    <div className="empty-state">
-                        <p>Không tìm thấy phòng nào</p>
-                        <button className="btn-create-empty" onClick={() => setIsModalOpen(true)}>
-                            <FaPlus /> Tạo phòng đầu tiên
-                        </button>
-                    </div>
-                ) : (
-                    <div className="rooms-grid">
-                        {filteredRooms.map((room) => (
-                            <RoomCard
-                                key={room._id}
-                                room={room}
-                                onJoin={handleJoinRoom}
-                            />
-                        ))}
-                    </div>
-                )}
-            </div>
+  useEffect(() => {
+    const handleRoomUpdate = (data) => {
+      if (data?.room) {
+        dispatch(updateRoom(data.room));
+      }
+    };
 
-            {/* Create Room Modal */}
-            <CreateRoomModal
-                isOpen={isModalOpen}
-                onClose={() => setIsModalOpen(false)}
-                onCreate={handleCreateRoom}
-                loading={loading}
-            />
+    const handlePlayerJoined = (data) => {
+      if (data?.room) {
+        dispatch(updateRoom(data.room));
+      }
+    };
 
-            {/* Password Modal */}
-            {showPasswordModal && (
-                <div className="modal-overlay" onClick={() => setShowPasswordModal(false)}>
-                    <div className="password-modal" onClick={(e) => e.stopPropagation()}>
-                        <h3>Nhập mật khẩu phòng</h3>
-                        <input
-                            type="password"
-                            placeholder="Mật khẩu..."
-                            value={passwordInput}
-                            onChange={(e) => setPasswordInput(e.target.value)}
-                            onKeyPress={(e) => e.key === 'Enter' && handlePasswordSubmit()}
-                        />
-                        <div className="password-actions">
-                            <button onClick={() => setShowPasswordModal(false)}>Hủy</button>
-                            <button onClick={handlePasswordSubmit}>Vào phòng</button>
-                        </div>
-                    </div>
-                </div>
-            )}
+    const handlePlayerLeft = (data) => {
+      if (data?.room) {
+        dispatch(updateRoom(data.room));
+      }
+    };
+
+    try {
+      gameSocket.onRoomUpdate(handleRoomUpdate);
+      gameSocket.onPlayerJoined(handlePlayerJoined);
+      gameSocket.onPlayerLeft(handlePlayerLeft);
+    } catch (error) {
+      console.error('Lỗi khi thiết lập socket listeners:', error);
+    }
+
+    return () => {
+      try {
+        gameSocket.offRoomUpdate(handleRoomUpdate);
+        gameSocket.offPlayerJoined(handlePlayerJoined);
+        gameSocket.offPlayerLeft(handlePlayerLeft);
+      } catch (error) {
+        console.error('Lỗi khi dọn dẹp socket listeners:', error);
+      }
+    };
+  }, [dispatch]);
+
+
+  const handleCreateRoom = () => {
+    navigate('/rooms/create');
+  };
+
+  const filteredRooms = (rooms || []).filter((room) => {
+    if (!room) return false;
+    const matchesSearch = room.name?.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesFilter =
+      filter === 'all' ||
+      (filter === 'waiting' && room.status === 'waiting') ||
+      (filter === 'playing' && room.status === 'playing') ||
+      (filter === 'full' && room.players?.length >= room.maxPlayers);
+    return matchesSearch && matchesFilter;
+  });
+
+
+  if (!rooms) {
+    dispatch(setRooms([]));
+  }
+
+  return (
+    <div className="min-h-screen bg-gray-100 p-3 sm:p-4">
+      <div className="max-w-7xl mx-auto">
+        <div className="bg-white rounded-lg shadow p-4 sm:p-6 mb-4 sm:mb-6">
+          <LobbyHeader onCreateRoom={handleCreateRoom} />
+          <SearchAndFilter
+            searchTerm={searchTerm}
+            onSearchChange={setSearchTerm}
+            filter={filter}
+            onFilterChange={setFilter}
+            onRefresh={loadRooms}
+            onActivityUpdate={updateActivity}
+          />
         </div>
-    );
+        <RoomList
+          loading={loading}
+          filteredRooms={filteredRooms}
+          onCreateRoom={handleCreateRoom}
+        />
+      </div>
+    </div>
+  );
 };
 
 export default Lobby;
