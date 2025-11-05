@@ -1,123 +1,96 @@
-import PropTypes from 'prop-types';
-import { FaUser, FaLock, FaUnlock, FaGamepad, FaClock } from 'react-icons/fa';
-import './RoomCard.css';
+import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { ROOM_STATUS } from '../../utils/constants';
+import PasswordModal from '../PasswordModal/PasswordModal';
 
-const RoomCard = ({ room, onJoin }) => {
-    const { name, host, players, maxPlayers, isPrivate, status, gameMode, createdAt } = room;
+const RoomCard = ({ room }) => {
+  const navigate = useNavigate();
+  const [showPasswordModal, setShowPasswordModal] = useState(false);
 
-    const isFull = players?.length >= maxPlayers;
-    const isPlaying = status === 'playing';
+  const handleJoin = () => {
+    if (room.passwordHash) {
+      setShowPasswordModal(true);
+    } else {
+      navigate(`/game/${room._id}`);
+    }
+  };
 
-    const handleJoinClick = () => {
-        if (!isFull && !isPlaying) {
-            onJoin(room);
-        }
-    };
+  const handlePasswordSubmit = (password) => {
+    setShowPasswordModal(false);
+    navigate(`/game/${room._id}`, { state: { password } });
+  };
 
-    const getStatusBadge = () => {
-        if (isPlaying) return <span className="status-badge playing">Đang chơi</span>;
-        if (isFull) return <span className="status-badge full">Đầy</span>;
-        return <span className="status-badge waiting">Chờ người chơi</span>;
-    };
+  const handlePasswordCancel = () => {
+    setShowPasswordModal(false);
+  };
 
-    const getGameModeText = () => {
-        switch (gameMode) {
-            case '1P': return 'Người vs AI';
-            case '2P': return 'Người vs Người';
-            default: return 'Online';
-        }
-    };
+  const getStatusBadge = () => {
+    switch (room.status) {
+      case ROOM_STATUS.WAITING:
+        return <span className="px-2 py-1 bg-yellow-100 text-yellow-800 text-xs rounded">Đang chờ</span>;
+      case ROOM_STATUS.PLAYING:
+        return <span className="px-2 py-1 bg-red-100 text-red-800 text-xs rounded">Đang chơi</span>;
+      case ROOM_STATUS.ENDED:
+        return <span className="px-2 py-1 bg-gray-100 text-gray-800 text-xs rounded">Đã kết thúc</span>;
+      default:
+        return null;
+    }
+  };
 
-    const formatTime = (date) => {
-        const now = new Date();
-        const created = new Date(date);
-        const diff = Math.floor((now - created) / 1000 / 60); // minutes
+  const isFull = room.players?.length >= room.maxPlayers;
 
-        if (diff < 1) return 'Vừa tạo';
-        if (diff < 60) return `${diff} phút trước`;
-        const hours = Math.floor(diff / 60);
-        if (hours < 24) return `${hours} giờ trước`;
-        return `${Math.floor(hours / 24)} ngày trước`;
-    };
-
-    return (
-        <div className={`room-card ${isFull ? 'full' : ''} ${isPlaying ? 'playing' : ''}`}>
-            <div className="room-card-header">
-                <div className="room-title">
-                    {isPrivate ? <FaLock className="lock-icon" /> : <FaUnlock className="unlock-icon" />}
-                    <h3>{name}</h3>
-                </div>
-                {getStatusBadge()}
-            </div>
-
-            <div className="room-card-body">
-                <div className="room-info">
-                    <div className="info-item">
-                        <FaUser className="icon" />
-                        <span>Chủ phòng: <strong>{host?.nickname || host?.username || 'N/A'}</strong></span>
-                    </div>
-
-                    <div className="info-item">
-                        <FaGamepad className="icon" />
-                        <span>Chế độ: <strong>{getGameModeText()}</strong></span>
-                    </div>
-
-                    <div className="info-item">
-                        <FaUser className="icon" />
-                        <span className="players-count">
-                            Người chơi: <strong>{players?.length || 0}/{maxPlayers}</strong>
-                        </span>
-                    </div>
-
-                    <div className="info-item">
-                        <FaClock className="icon" />
-                        <span className="time">{formatTime(createdAt)}</span>
-                    </div>
-                </div>
-
-                {/* Players List */}
-                {players && players.length > 0 && (
-                    <div className="players-list">
-                        {players.map((player, index) => (
-                            <div key={player._id || index} className="player-item">
-                                <img
-                                    src={player.avatarUrl || '/default-avatar.png'}
-                                    alt={player.nickname}
-                                    className="player-avatar"
-                                />
-                                <span className="player-name">{player.nickname || player.username}</span>
-                            </div>
-                        ))}
-                    </div>
-                )}
-            </div>
-
-            <div className="room-card-footer">
-                <button
-                    className={`btn-join ${isFull || isPlaying ? 'disabled' : ''}`}
-                    onClick={handleJoinClick}
-                    disabled={isFull || isPlaying}
-                >
-                    {isPlaying ? 'Đang chơi' : isFull ? 'Phòng đầy' : 'Vào phòng'}
-                </button>
-            </div>
+  return (
+    <div className="bg-white rounded-lg shadow-md p-4 hover:shadow-lg transition-shadow">
+      <div className="flex items-start justify-between mb-3">
+        <div className="flex-1">
+          <h3 className="text-lg font-semibold text-gray-800">{room.name}</h3>
+          <div className="flex items-center gap-2 mt-1">
+            {getStatusBadge()}
+            {room.passwordHash && (
+              <span className="px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded">🔒 Có mật khẩu</span>
+            )}
+          </div>
         </div>
-    );
-};
+      </div>
 
-RoomCard.propTypes = {
-    room: PropTypes.shape({
-        _id: PropTypes.string.isRequired,
-        name: PropTypes.string.isRequired,
-        host: PropTypes.object,
-        players: PropTypes.array,
-        maxPlayers: PropTypes.number,
-        isPrivate: PropTypes.bool,
-        status: PropTypes.string,
-        gameMode: PropTypes.string,
-        createdAt: PropTypes.string
-    }).isRequired,
-    onJoin: PropTypes.func.isRequired
+      <div className="space-y-2 mb-4">
+        <div className="flex items-center justify-between text-sm">
+          <span className="text-gray-600">Người chơi:</span>
+          <span className="font-medium">
+            {room.players?.length || 0} / {room.maxPlayers}
+          </span>
+        </div>
+        {room.hostUsername && (
+          <div className="flex items-center justify-between text-sm">
+            <span className="text-gray-600">Chủ phòng:</span>
+            <span className="font-medium">{room.hostUsername}</span>
+          </div>
+        )}
+      </div>
+
+      <button
+        onClick={handleJoin}
+        disabled={isFull || room.status === ROOM_STATUS.PLAYING}
+        className={`
+          w-full py-2 px-4 rounded-lg font-medium transition-colors
+          ${isFull || room.status === ROOM_STATUS.PLAYING
+            ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+            : 'bg-blue-600 text-white hover:bg-blue-700'
+          }
+        `}
+      >
+        {isFull ? 'Phòng đầy' : room.status === ROOM_STATUS.PLAYING ? 'Đang chơi' : 'Tham gia'}
+      </button>
+
+      <PasswordModal
+        isOpen={showPasswordModal}
+        onClose={handlePasswordCancel}
+        onSubmit={handlePasswordSubmit}
+        roomName={room.name}
+        roomId={room._id}
+      />
+    </div>
+  );
 };
 
 export default RoomCard;

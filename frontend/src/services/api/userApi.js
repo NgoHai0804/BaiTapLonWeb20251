@@ -1,44 +1,57 @@
-import api from './axios';
+import apiClient from './apiClient';
 
-/**
- * User API Services
- */
+export const userApi = {
+  getProfile: async () => {
+    const response = await apiClient.get('/api/users/profile');
+    // Backend trả về { success: true, message, data }
+    return response.data.data || response.data;
+  },
 
-// Lấy thông tin profile người dùng
-export const getUserProfile = () => {
-    return api.get('/user/profile');
+  updateProfile: async (data) => {
+    const response = await apiClient.put('/api/users/profile', data);
+    // Backend trả về { success: true, message, data }
+    return response.data.data || response.data;
+  },
+
+  changePassword: async (data) => {
+    try {
+      const response = await apiClient.post('/api/users/change-password', data);
+      return response.data.data || response.data;
+    } catch (error) {
+      // Trích xuất thông báo lỗi từ response
+      const errorMessage = error.response?.data?.message || error.message || 'Đổi mật khẩu thất bại';
+      throw new Error(errorMessage);
+    }
+  },
+
+  getLeaderboard: async (gameId = 'caro') => {
+    const response = await apiClient.get(`/api/users/leaderboard?gameId=${gameId}`);
+    // Backend trả về { success: true, message, data }
+    const data = response.data.data || response.data;
+    // Đảm bảo luôn trả về array
+    return Array.isArray(data) ? data : [];
+  },
+
+  getUserProfile: async (userId) => {
+    const response = await apiClient.get(`/api/users/profile/${userId}`);
+    return response.data.data || response.data;
+  },
+
+  // API lịch sử game
+  getGameHistory: async (limit = 20, skip = 0) => {
+    const response = await apiClient.get(`/api/users/game-history?limit=${limit}&skip=${skip}`);
+    return response.data.data || response.data;
+  },
+
+  getUserGameHistory: async (userId, limit = 20, skip = 0) => {
+    const response = await apiClient.get(`/api/users/game-history/${userId}?limit=${limit}&skip=${skip}`);
+    return response.data.data || response.data;
+  },
+
+  getGameDetail: async (gameId) => {
+    const response = await apiClient.get(`/api/users/game/${gameId}`);
+    return response.data.data || response.data;
+  },
 };
 
-// Cập nhật profile { username, avatar, bio }
-export const updateUserProfile = (profileData) => {
-    return api.put('/user/update-profile', profileData);
-};
-
-// Lấy leaderboard
-export const getLeaderboard = (gameId = 'caro') => {
-    return api.get('/user/leaderboard', { params: { gameId } });
-};
-
-// Lấy lịch sử game của user
-export const getUserGameHistory = (userId, limit = 20, skip = 0) => {
-    return api.get(`/history/${userId}`, { params: { limit, skip } });
-};
-
-// Lấy chi tiết game để replay
-export const getGameDetail = (gameId) => {
-    return api.get(`/history/detail/${gameId}`);
-};
-
-// Lấy thống kê game
-export const getUserStats = (userId) => {
-    return api.get(`/history/stats/${userId}`);
-};
-
-export default {
-    getUserProfile,
-    updateUserProfile,
-    getLeaderboard,
-    getUserGameHistory,
-    getGameDetail,
-    getUserStats
-};
+export default userApi;

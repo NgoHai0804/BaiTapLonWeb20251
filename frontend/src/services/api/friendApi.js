@@ -1,50 +1,40 @@
-import api from './axios';
+import apiClient from './apiClient';
 
-/**
- * Friend API Services
- */
+export const friendApi = {
+  getFriends: async () => {
+    const response = await apiClient.get('/api/friend');
+    return response.data;
+  },
 
-// Lấy danh sách bạn bè
-export const getFriendsList = () => {
-    return api.get('/friend');
+  sendRequest: async (addresseeId) => {
+    const response = await apiClient.post('/api/friend/request', { addresseeId });
+    return response.data;
+  },
+
+  getRequests: async () => {
+    const response = await apiClient.get('/api/friend/requests');
+    return response.data.data || response.data;
+  },
+
+  acceptRequest: async (requesterId) => {
+    const response = await apiClient.post('/api/friend/accept', { requesterId });
+    return response.data;
+  },
+
+  cancelRequest: async (requesterId) => {
+    const response = await apiClient.post('/api/friend/cancel', { requesterId });
+    return response.data;
+  },
+
+  searchUser: async (nickname, userID) => {
+    const response = await apiClient.post('/api/friend/search', { nickname, userID });
+    return response.data;
+  },
+
+  removeFriend: async (friendId) => {
+    const response = await apiClient.post('/api/friend/unfriend', { friendId });
+    return response.data;
+  },
 };
 
-// Lấy danh sách lời mời kết bạn
-export const getFriendRequests = () => {
-    return api.get('/friend/requests');
-};
-
-// Gửi yêu cầu kết bạn
-export const sendFriendRequest = (addresseeId) => {
-    return api.post('/friend/request', { addresseeId });
-};
-
-// Chấp nhận lời mời kết bạn
-export const acceptFriendRequest = (requesterId) => {
-    return api.post('/friend/accept', { requesterId });
-};
-
-// Từ chối/hủy lời mời kết bạn
-export const cancelFriendRequest = (requesterId) => {
-    return api.post('/friend/cancel', { requesterId });
-};
-
-// Hủy kết bạn
-export const unfriend = (friendId) => {
-    return api.post('/friend/unfriend', { friendId });
-};
-
-// Tìm kiếm người dùng
-export const searchUsers = (searchData) => {
-    return api.post('/friend/search', searchData);
-};
-
-export default {
-    getFriendsList,
-    getFriendRequests,
-    sendFriendRequest,
-    acceptFriendRequest,
-    cancelFriendRequest,
-    unfriend,
-    searchUsers
-};
+export default friendApi;
