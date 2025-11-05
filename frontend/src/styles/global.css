@@ -1,18 +1,4 @@
-/*🌍 global.css
-
-Chứa quy tắc style tổng thể, ảnh hưởng toàn bộ ứng dụng (reset CSS, font mặc định, background, scrollbar,…).
-
-Nhiệm vụ chính:
-
-Reset style mặc định của trình duyệt (box-sizing, margin, padding, etc.)
-
-Gán font, màu nền, text mặc định
-
-Style cho body, html, a, button, input, scrollbar
-
-Định nghĩa layout chung (ví dụ background game, màu khung chat)
-
-Ví dụ nội dung:
+/* global.css - Style tổng thể cho toàn bộ ứng dụng */
 
 /* Reset */
 *,
@@ -51,10 +37,3 @@ button {
   background: var(--color-secondary);
   border-radius: var(--radius);
 }
-
-
-Gợi ý mở rộng:
-
-Có thể thêm @keyframes cơ bản (fadeIn, slideUp) dùng chung.
-
-Style toàn cục cho toast, modal, overlay, tooltip.*/
