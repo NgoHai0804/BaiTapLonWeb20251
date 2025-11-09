@@ -9,5 +9,6 @@ const router = express.Router();
 router.use("/auth", require("./auth.routes"));
 router.use("/user", require("./user.routes"));
 router.use("/friend", require("./friend.routes"));
+router.use("/room", require("./room.routes"));
 
 module.exports = router;

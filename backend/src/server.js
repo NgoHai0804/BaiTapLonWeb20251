@@ -14,8 +14,7 @@
 
 // Log trạng thái khi server khởi động thành công
 
-
-const app = require('./app');
+const app = require("./app");
 const PORT = process.env.PORT || 5000;
 
 app.listen(PORT, () => {
