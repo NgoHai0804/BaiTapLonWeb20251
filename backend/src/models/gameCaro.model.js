@@ -26,3 +26,32 @@ const GameCaroSchema = new Schema({
 
 GameCaroSchema.index({ roomId: 1, startedAt: -1 });
 module.exports = mongoose.model('GameCaro', GameCaroSchema);
+
+// ... (giữ nguyên phần Schema của Hiệp)
+
+// Phương thức tĩnh để lấy lịch sử đấu của một người chơi
+GameCaroSchema.statics.getPlayerHistory = function(userId) {
+  return this.find({
+    $or: [{ playerX: userId }, { playerO: userId }]
+  })
+  .sort({ startedAt: -1 }) // Trận mới nhất lên đầu
+  .populate('playerX playerO winnerId', 'username nickname avatar'); // Lấy thêm thông tin user
+};
+
+// Phương thức để tính tỉ lệ thắng (ví dụ cho dashboard)
+GameCaroSchema.statics.getWinLossStats = async function(userId) {
+  const games = await this.find({
+    $or: [{ playerX: userId }, { playerO: userId }],
+    winnerId: { $ne: null }
+  });
+
+  const wins = games.filter(g => g.winnerId.toString() === userId.toString()).length;
+  return {
+    totalGames: games.length,
+    wins: wins,
+    winRate: games.length > 0 ? (wins / games.length * 100).toFixed(2) + '%' : '0%'
+  };
+};
+
+GameCaroSchema.index({ roomId: 1, startedAt: -1 });
+module.exports = mongoose.model('GameCaro', GameCaroSchema);
