@@ -8,7 +8,8 @@ const Cell = ({ value, x, y, isHovered, onClick, onMouseEnter, onMouseLeave, dis
   useEffect(() => {
     if (isWinningCell) {
       // Sau khi animation hoàn thành, chuyển sang trạng thái final
-      const timer = setTimeout(() => {
+      const t
+      imer = setTimeout(() => {
         setAnimationComplete(true);
       }, 1200);
       return () => clearTimeout(timer);
