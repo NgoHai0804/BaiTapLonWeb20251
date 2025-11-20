@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <!-- =========================
+         🧠 CẤU HÌNH CƠ BẢN
+         - Đặt tiêu đề, mô tả, charset, viewport
+         - Giúp web hiển thị chuẩn và responsive
+    ========================== -->
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+    <!-- 🔹 Tiêu đề trang hiển thị trên tab trình duyệt -->
+    <title>Caro Online Realtime</title>
+
+    <!-- 🔹 Mô tả ngắn gọn về game (phục vụ SEO / chia sẻ link) -->
+    <meta name="description" content="Cờ caro online 1v1/đa người, chơi realtime với bạn bè hoặc AI. Hãy thử thách khả năng chiến thuật của bạn!" />
+
+    <!-- 🔹 Màu thanh địa chỉ trên trình duyệt di động -->
+    <meta name="theme-color" content="#20232a" />
+
+    <!-- =========================
+         🧩 ICON, FONT, CSS
+         - Liên kết favicon, font chữ, stylesheet build
+    ========================== -->
+    <!-- 🔹 Icon nhỏ trên tab trình duyệt -->
+    <link rel="icon" href="/favicon.ico" />
+
+    <!-- 🔹 Font (VD: Google Fonts hoặc font custom) -->
+    <!-- TODO: Thêm link font bạn chọn -->
+    <!-- <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap" rel="stylesheet" /> -->
+
+    <!-- =========================
+         🎵 PRELOAD TÀI NGUYÊN QUAN TRỌNG (TÙY CHỌN)
+         - Giúp game load nhanh hơn
+         - Thường dùng cho nhạc nền, ảnh nền, logo
+    ========================== -->
+    <!-- <link rel="preload" as="image" href="/assets/images/board-bg.png" /> -->
+    <!-- <link rel="preload" as="audio" href="/assets/sounds/click.mp3" /> -->
+
+    <!-- =========================
+         🌐 MỞ RỘNG (SEO / CHIA SẺ MẠNG XÃ HỘI)
+         - Hiển thị thumbnail khi chia sẻ link
+    ========================== -->
+    <!-- <meta property="og:title" content="Caro Online Realtime" /> -->
+    <!-- <meta property="og:description" content="Tham gia các trận đấu caro online realtime cực hấp dẫn!" /> -->
+    <!-- <meta property="og:image" content="/assets/images/thumbnail.png" /> -->
+    <!-- <meta property="og:url" content="https://caro-online.example.com" /> -->
+  </head>
+
+  <body>
+    <!-- =========================
+         🚀 NƠI REACT SẼ RENDER APP
+         - KHÔNG XÓA <div id="root">
+         - Toàn bộ giao diện React sẽ xuất hiện trong đây
+    ========================== -->
+    <div id="root">
+      <!-- (Tuỳ chọn) Hiển thị logo hoặc màn hình loading tĩnh trước khi React load -->
+      <!-- <div id="loading-screen">
+           <img src="/assets/images/logo.png" alt="Loading..." />
+           <p>Đang tải trò chơi...</p>
+         </div> -->
+    </div>
+
+    <!-- =========================
+         ⚙️ SCRIPT CHÍNH
+         - Tự động thêm khi build React
+         - Không cần import thủ công
+    ========================== -->
+    <script type="module" src="/src/main.jsx"></script>
+
+    <!-- =========================
+         📊 PHÂN TÍCH / THEO DÕI (TÙY CHỌN)
+         - Google Analytics, Hotjar, v.v.
+    ========================== -->
+    <!-- <script async src="https://www.googletagmanager.com/gtag/js?id=GA-ID"></script> -->
+    <!-- <script>
+         window.dataLayer = window.dataLayer || [];
+         function gtag(){dataLayer.push(arguments);}
+         gtag('js', new Date());
+         gtag('config', 'GA-ID');
+    </script> -->
+  </body>
+</html>

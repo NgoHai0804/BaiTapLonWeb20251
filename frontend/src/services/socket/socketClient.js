@@ -1,33 +1,38 @@
-// socketClient.js
+import { io } from 'socket.io-client';
 
-// File khởi tạo và quản lý kết nối Socket.IO duy nhất trong toàn ứng dụng.
+// URL from env or default to localhost
+const SOCKET_URL = import.meta.env.VITE_SOCKET_URL || 'http://localhost:3000';
 
-// Nhiệm vụ:
+class SocketClient {
+    socket = null;
 
-// Tạo socket client với server (io("https://server-url.com")).
+    connect() {
+        if (!this.socket) {
+            this.socket = io(SOCKET_URL, {
+                autoConnect: false,
+                withCredentials: true,
+            });
+        }
+        this.socket.connect();
+    }
 
-// Truyền token xác thực (auth: { token: ... }).
+    disconnect() {
+        if (this.socket) {
+            this.socket.disconnect();
+        }
+    }
 
-// Tự động reconnect nếu mất kết nối.
+    emit(event, data) {
+        if (this.socket) this.socket.emit(event, data);
+    }
 
-// Export instance socket để module khác sử dụng.
+    on(event, callback) {
+        if (this.socket) this.socket.on(event, callback);
+    }
 
-// Gợi ý cấu trúc:
+    off(event) {
+        if (this.socket) this.socket.off(event);
+    }
+}
 
-// import { io } from "socket.io-client";
-
-// const socket = io(import.meta.env.VITE_API_URL, {
-//   auth: { token: localStorage.getItem("token") },
-//   transports: ["websocket"],
-//   reconnectionAttempts: 5,
-//   reconnectionDelay: 2000,
-// });
-
-// export default socket;
-
-
-// Lưu ý:
-
-// File này chỉ chạy một lần, tránh tạo nhiều kết nối trùng.
-
-// Có thể thêm event handler chung (như "connect", "disconnect", "error").
+export const socketClient = new SocketClient();
