@@ -4,6 +4,18 @@ const response = require("../utils/response");
 const aiBotService = require("../services/aiBot.service");
 const logger = require("../utils/logger");
 
+// Tinh tong va tra ve nuoc di tot nhat cho bot dua tren ban co hien tai va do kho
+function calculateTotalScore(board, botMark, difficulty) {
+  // Implementation here
+}
+
+// Tinh tong va tra ve nuoc di tot nhat cho bot dua tren ban co hien tai va do kho
+function getBestMove(board, botMark, difficulty, lastMove) {
+  // Implementation here
+}   
+ 
+
+
 // Tính toán và trả về nước đi tốt nhất cho bot dựa trên bàn cờ hiện tại và độ khó
 async function getBotMove(req, res) {
   try {
