@@ -7,17 +7,34 @@ const NotificationSchema = new Schema({
     ref: "User",
     required: true,
     index: true,
-  }, // User cần thông báo
+  }, // Người nhận thông báo
+
+  senderId: {
+    type: Schema.Types.ObjectId,
+    ref: "User",
+    default: null
+  }, // Người gửi (ví dụ: người gửi lời mời kết bạn)
+
   type: {
     type: String,
-    enum: ["friend_request", "room_invite", "system"],
+    enum: ["friend_request", "room_invite", "system", "game_result"],
     required: true,
   }, // Loại thông báo
 
-  content: { type: String }, // Content
+  content: { type: String, required: true }, // Nội dung hiển thị
 
-  isRead: { type: Boolean, default: false, index: true }, // Đã đọc?
-  createdAt: { type: Date, default: Date.now }, // Thời gian
+  // Metadata: Lưu các thông tin bổ sung tùy theo loại thông báo
+  // Ví dụ: { roomId: "...", friendRequestId: "..." }
+  metadata: {
+    type: Object,
+    default: {}
+  },
+
+  isRead: { type: Boolean, default: false, index: true }, 
+  createdAt: { type: Date, default: Date.now },
 });
+
+// Thêm index để truy vấn nhanh danh sách thông báo chưa đọc của 1 user
+NotificationSchema.index({ userId: 1, isRead: 1, createdAt: -1 });
 
 module.exports = mongoose.model("Notification", NotificationSchema);
