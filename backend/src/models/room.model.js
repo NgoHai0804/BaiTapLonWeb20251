@@ -2,21 +2,25 @@ const mongoose = require("mongoose");
 const { Schema } = mongoose;
 
 const RoomPlayerSchema = new Schema({
-  userId: { type: Schema.Types.ObjectId, ref: "User", required: true }, // ID người chơi
-  username: { type: String }, // Tên người chơi (để hiển thị khi disconnect)
-  isHost: { type: Boolean, default: false }, // Có phải chủ phòng không (người tạo)
-  isReady: { type: Boolean, default: false }, // Người chơi đã bấm "Ready" để bắt đầu chưa
-  joinedAt: { type: Date, default: Date.now }, // Thời điểm người chơi tham gia phòng
-  sessionId: { type: String }, // ID phiên socket hiện tại (để reconnect nhanh nếu rớt mạng)
-  isDisconnected: { type: Boolean, default: false }, // Trạng thái disconnect
-  disconnectedAt: { type: Date }, // Thời điểm disconnect
-});
+  userId: { type: Schema.Types.ObjectId, ref: "User", required: true },
+  username: { type: String },
+  isHost: { type: Boolean, default: false },
+  isReady: { type: Boolean, default: false },
+  joinedAt: { type: Date, default: Date.now },
+  sessionId: { type: String }, 
+  isDisconnected: { type: Boolean, default: false },
+  disconnectedAt: { type: Date },
+}, { _id: false }); // Không cần ID riêng cho từng player trong mảng
 
 const RoomSchema = new Schema({
-  name: { type: String }, // Tên hiển thị của phòng (đổi từ roomName theo diagram)
-  passwordHash: { type: String, default: null }, // Mật khẩu phòng
-  hostId: { type: Schema.Types.ObjectId, ref: "User", index: true }, // ID chủ phòng
-  maxPlayers: { type: Number, default: 2 }, // Giới hạn số người chơi trong phòng (2–4)
+  name: { type: String, required: true }, 
+  passwordHash: { type: String, default: null }, 
+  
+  // Thuộc tính ảo để check nhanh phòng có mật khẩu không
+  isPrivate: { type: Boolean, default: false },
+
+  hostId: { type: Schema.Types.ObjectId, ref: "User", index: true },
+  maxPlayers: { type: Number, default: 2 },
 
   status: {
     type: String,
@@ -25,11 +29,14 @@ const RoomSchema = new Schema({
     index: true,
   },
 
-  players: { type: [RoomPlayerSchema], default: [] }, // DS người chơi trong phòng
-  createdAt: { type: Date, default: Date.now }, // Thời gian tạo phòng
+  // Lưu ID của trận đấu đang diễn ra
+  currentGameId: { type: Schema.Types.ObjectId, ref: "GameCaro", default: null },
+
+  players: { type: [RoomPlayerSchema], default: [] },
+  createdAt: { type: Date, default: Date.now },
 });
 
-RoomSchema.index({ status: 1 });
-RoomSchema.index({ hostId: 1 });
+// Index giúp tìm các phòng đang "waiting" nhanh nhất để hiển thị danh sách
+RoomSchema.index({ status: 1, createdAt: -1 });
 
 module.exports = mongoose.model("Room", RoomSchema);
