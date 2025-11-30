@@ -3,10 +3,13 @@ const { Schema } = mongoose;
 
 const RoomPlayerSchema = new Schema({
   userId: { type: Schema.Types.ObjectId, ref: "User", required: true }, // ID người chơi
+  username: { type: String }, // Tên người chơi (để hiển thị khi disconnect)
   isHost: { type: Boolean, default: false }, // Có phải chủ phòng không (người tạo)
-  isReady: { type: Boolean, default: false }, // Người chơi đã bấm “Ready” để bắt đầu chưa
+  isReady: { type: Boolean, default: false }, // Người chơi đã bấm "Ready" để bắt đầu chưa
   joinedAt: { type: Date, default: Date.now }, // Thời điểm người chơi tham gia phòng
   sessionId: { type: String }, // ID phiên socket hiện tại (để reconnect nhanh nếu rớt mạng)
+  isDisconnected: { type: Boolean, default: false }, // Trạng thái disconnect
+  disconnectedAt: { type: Date }, // Thời điểm disconnect
 });
 
 const RoomSchema = new Schema({

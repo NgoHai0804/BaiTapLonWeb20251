@@ -1,28 +1,55 @@
-// userApi.js
+import axios from 'axios';
 
-// Xử lý mọi yêu cầu liên quan đến người dùng: đăng ký, đăng nhập, hồ sơ cá nhân.
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
 
-// Nhiệm vụ:
+const api = axios.create({
+  baseURL: API_URL,
+  headers: {
+    'Content-Type': 'application/json',
+  },
+});
 
-// Gửi request đăng ký (POST /auth/register).
+// Add token to requests
+api.interceptors.request.use((config) => {
+  let token = localStorage.getItem('auth_token');
+  
+  if (token) {
+    // Loại bỏ dấu ngoặc kép nếu có
+    token = token.replace(/^"(.*)"$/, '$1');
+    // Loại bỏ khoảng trắng thừa
+    token = token.trim();
+    config.headers.Authorization = `Bearer ${token}`;
+  }
+  return config;
+});
 
-// Gửi request đăng nhập (POST /auth/login).
+export const userApi = {
+  getProfile: async () => {
+    const response = await api.get('/api/users/profile');
+    // Backend trả về { success: true, message, data }
+    return response.data.data || response.data;
+  },
 
-// Lấy thông tin người dùng (GET /user/profile).
+  updateProfile: async (data) => {
+    const response = await api.put('/api/users/profile', data);
+    // Backend trả về { success: true, message, data }
+    return response.data.data || response.data;
+  },
 
-// Cập nhật thông tin hoặc avatar (PUT /user/profile).
+  changePassword: async (data) => {
+    const response = await api.post('/api/users/change-password', data);
+    return response.data.data || response.data;
+  },
 
-// Sử dụng:
+  getLeaderboard: async (gameId = 'caro') => {
+    const response = await api.get(`/api/users/leaderboard?gameId=${gameId}`);
+    return response.data.data || response.data;
+  },
 
-// const res = await userApi.login({ email, password });
+  getUserProfile: async (userId) => {
+    const response = await api.get(`/api/users/profile/${userId}`);
+    return response.data.data || response.data;
+  },
+};
 
-
-// Gợi ý cấu trúc:
-
-// userApi = {
-//   login(data),
-//   register(data),
-//   getProfile(),
-//   updateProfile(data),
-//   changePassword(data)
-// }
+export default userApi;

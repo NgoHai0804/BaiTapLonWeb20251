@@ -13,7 +13,8 @@ const userController = require("../controllers/user.controller");
 
 // Cần đăng nhập (middleware auth)
 router.get("/profile", verifyToken, userController.getProfile);
-router.put("/update-profile", verifyToken, userController.updateProfile);
+router.get("/profile/:userId", verifyToken, userController.getUserProfile);
+router.put("/profile", verifyToken, userController.updateProfile);
 router.get("/leaderboard", userController.getLeaderboard);
 
 module.exports = router;

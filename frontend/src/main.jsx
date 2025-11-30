@@ -7,7 +7,11 @@ import 'react-toastify/dist/ReactToastify.css'
 
 import App from './App.jsx'
 import store from './store'
+import { cleanupToken } from './utils/tokenHelper'
 import './index.css'
+
+// Cleanup token khi app khởi động
+cleanupToken()
 
 ReactDOM.createRoot(document.getElementById('root')).render(
     <React.StrictMode>

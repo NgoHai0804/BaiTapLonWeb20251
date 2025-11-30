@@ -1,11 +1,45 @@
-// GameBoard.jsx
+import React, { useEffect } from 'react';
+import { useSelector } from 'react-redux';
+import Cell from './Cell';
+import useGameBoard from './useGameBoard';
+import { BOARD_SIZE } from '../../utils/constants';
 
-// Thành phần chính hiển thị bàn cờ caro.
+const GameBoard = ({ onCellClick, disabled = false }) => {
+  const { board, currentTurn, isGameOver, lastMove } = useSelector((state) => state.game);
+  const { hoveredCell, handleCellHover, handleCellLeave, handleCellClick } = useGameBoard(onCellClick);
 
-// Render bằng HTML5 Canvas (hoặc WebGL nếu muốn hiệu ứng).
+  return (
+    <div className="w-full max-w-2xl mx-auto bg-gray-50 p-4 rounded-lg shadow-lg">
+      <div className="grid gap-1 bg-gray-200 p-2 rounded" style={{ gridTemplateColumns: `repeat(${BOARD_SIZE}, minmax(0, 1fr))` }}>
+        {board.map((row, x) =>
+          row.map((cell, y) => {
+            const isLastMoveCell = lastMove && lastMove.x === x && lastMove.y === y;
+            return (
+              <div key={`${x}-${y}`} className="aspect-square">
+                <Cell
+                  value={cell}
+                  x={x}
+                  y={y}
+                  isHovered={hoveredCell?.x === x && hoveredCell?.y === y}
+                  isLastMove={isLastMoveCell}
+                  onClick={handleCellClick}
+                  onMouseEnter={handleCellHover}
+                  onMouseLeave={handleCellLeave}
+                  disabled={disabled || isGameOver}
+                />
+              </div>
+            );
+          })
+        )}
+      </div>
+      
+      {!isGameOver && (
+        <div className="mt-4 text-center text-gray-600">
+          <p>Lượt chơi: <span className="font-bold">{currentTurn}</span></p>
+        </div>
+      )}
+    </div>
+  );
+};
 
-// Xử lý logic hiển thị quân X/O, highlight lượt đi, animation nước đi.
-
-// Giao tiếp với backend qua Socket.IO để sync trạng thái giữa 2 người chơi.
-
-// Sử dụng hook useGameBoard để quản lý logic bàn cờ.
+export default GameBoard;

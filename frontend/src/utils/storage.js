@@ -1,26 +1,68 @@
 // storage.js
+// Wrapper cho localStorage
 
-// Wrapper cho localStorage (và có thể thêm sessionStorage) — giúp code an toàn, dễ debug, và tránh lỗi khi parse JSON.
+export const storage = {
+  set(key, value) {
+    try {
+      // Nếu là string (như token), lưu trực tiếp không dùng JSON.stringify
+      if (typeof value === 'string') {
+        localStorage.setItem(key, value);
+      } else {
+        const serialized = JSON.stringify(value);
+        localStorage.setItem(key, serialized);
+      }
+    } catch (error) {
+      console.error('Error saving to localStorage:', error);
+    }
+  },
 
-// Nhiệm vụ chính:
+  get(key, defaultValue = null) {
+    try {
+      const item = localStorage.getItem(key);
+      if (item === null) return defaultValue;
+      
+      // Thử parse JSON, nếu fail thì trả về string trực tiếp
+      try {
+        const parsed = JSON.parse(item);
+        // Nếu parse ra là string có dấu ngoặc kép, loại bỏ chúng
+        if (typeof parsed === 'string' && parsed.startsWith('"') && parsed.endsWith('"')) {
+          return parsed.slice(1, -1);
+        }
+        return parsed;
+      } catch {
+        // Nếu không parse được JSON, trả về string trực tiếp
+        // Loại bỏ dấu ngoặc kép nếu có
+        if (item.startsWith('"') && item.endsWith('"')) {
+          return item.slice(1, -1);
+        }
+        return item;
+      }
+    } catch (error) {
+      console.error('Error reading from localStorage:', error);
+      return defaultValue;
+    }
+  },
 
-// Lưu, đọc, xóa dữ liệu từ localStorage.
+  remove(key) {
+    try {
+      localStorage.removeItem(key);
+    } catch (error) {
+      console.error('Error removing from localStorage:', error);
+    }
+  },
 
-// Tự động parse và stringify JSON.
+  clear() {
+    try {
+      localStorage.clear();
+    } catch (error) {
+      console.error('Error clearing localStorage:', error);
+    }
+  },
+};
 
-// Có thể mở rộng thêm TTL (thời gian hết hạn).
-
-// Ví dụ công dụng:
-
-// Lưu token đăng nhập.
-
-// Ghi nhớ cài đặt người dùng (âm thanh, theme,…).
-
-// Cache danh sách bạn bè hoặc phòng gần nhất.
-
-// Hàm gợi ý:
-
-// storage.set("token", token);
-// const token = storage.get("token");
-// storage.remove("token");
-// storage.clearAll();
+// Keys
+export const STORAGE_KEYS = {
+  TOKEN: 'auth_token',
+  USER: 'user_data',
+  SETTINGS: 'user_settings',
+};

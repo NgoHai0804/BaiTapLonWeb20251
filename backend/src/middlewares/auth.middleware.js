@@ -10,7 +10,9 @@ module.exports = (req, res, next) => {
         .json({ success: false, message: "No token provided" });
     }
 
-    const token = authHeader.replace("Bearer ", "");
+    let token = authHeader.replace("Bearer ", "").trim();
+    // Loại bỏ dấu ngoặc kép nếu có
+    token = token.replace(/^"(.*)"$/, '$1');
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
 
     // Chuẩn hóa thông tin user để các nơi khác luôn dùng _id

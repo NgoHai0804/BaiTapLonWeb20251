@@ -50,9 +50,26 @@ async function sendFriendRequest(requesterId, addresseeId) {
         existing.status = "pending";
         existing.updateAt = Date.now();
         await existing.save();
+        await existing.populate('requester', 'username nickname avatarUrl');
         logger.info(`User ${requesterId} resent friend request to ${addresseeId}`);
-        if (io)
-          io.to(addresseeId.toString()).emit("friend:requestReceived", existing);
+        if (io) {
+          const requestData = {
+            _id: existing._id,
+            requester: {
+              _id: existing.requester._id,
+              username: existing.requester.username,
+              nickname: existing.requester.nickname,
+              avatarUrl: existing.requester.avatarUrl,
+            },
+            addressee: existing.addressee,
+            status: existing.status,
+            createdAt: existing.createdAt,
+          };
+          logger.info(`Emitting friend:requestReceived (resend) to ${addresseeId.toString()}`);
+          io.to(addresseeId.toString()).emit("friend:requestReceived", requestData);
+        } else {
+          logger.warn("Socket.io instance not available, cannot emit friend request notification");
+        }
         return existing;
       }
     }
@@ -62,10 +79,29 @@ async function sendFriendRequest(requesterId, addresseeId) {
       addressee: addresseeId,
     });
 
+    // Populate requester để có thông tin đầy đủ
+    await newRequest.populate('requester', 'username nickname avatarUrl');
+
     logger.info(`User ${requesterId} sent friend request to ${addresseeId}`);
 
-    if (io)
-      io.to(addresseeId.toString()).emit("friend:requestReceived", newRequest);
+    if (io) {
+      const requestData = {
+        _id: newRequest._id,
+        requester: {
+          _id: newRequest.requester._id,
+          username: newRequest.requester.username,
+          nickname: newRequest.requester.nickname,
+          avatarUrl: newRequest.requester.avatarUrl,
+        },
+        addressee: newRequest.addressee,
+        status: newRequest.status,
+        createdAt: newRequest.createdAt,
+      };
+      logger.info(`Emitting friend:requestReceived to ${addresseeId.toString()}`);
+      io.to(addresseeId.toString()).emit("friend:requestReceived", requestData);
+    } else {
+      logger.warn("Socket.io instance not available, cannot emit friend request notification");
+    }
     return newRequest;
   } catch (err) {
     if (err.code === 11000) {
@@ -78,31 +114,34 @@ async function sendFriendRequest(requesterId, addresseeId) {
 
 
 // 2️ Chấp nhận lời mời
-async function acceptFriendRequest(userAId, userBId) {
+// requesterId: người gửi lời mời (A)
+// addresseeId: người nhận lời mời (B) - người này mới có quyền chấp nhận
+async function acceptFriendRequest(requesterId, addresseeId) {
   try {
-    console.log("acceptFriendRequest:", userAId, userBId);
+    console.log("acceptFriendRequest:", { requesterId, addresseeId });
 
-    // Tìm xem giữa 2 user có lời mời pending nào không
+    // Tìm lời mời: requester là người gửi, addressee là người nhận (người chấp nhận)
     const request = await Friend.findOne({
-      $or: [
-        { requester: userAId, addressee: userBId, status: "pending" },
-        { requester: userBId, addressee: userAId, status: "pending" },
-      ],
+      requester: requesterId,
+      addressee: addresseeId,
+      status: "pending",
     });
 
     // Nếu không có lời mời thì báo lỗi
-    if (!request) throw new Error("Không tìm thấy lời mời kết bạn");
+    if (!request) {
+      throw new Error("Không tìm thấy lời mời kết bạn. Chỉ người nhận lời mời mới có quyền chấp nhận.");
+    }
 
     // Cập nhật trạng thái thành accepted
     request.status = "accepted";
 
     await request.save();
-    logger.info(`Friend request accepted between ${userAId} and ${userBId}`);
+    logger.info(`Friend request accepted: ${requesterId} -> ${addresseeId}`);
 
     // Gửi realtime (nếu có socket.io)
     if (typeof io !== "undefined" && io) {
-      io.to(userAId.toString()).emit("friend:accepted", userBId);
-      io.to(userBId.toString()).emit("friend:accepted", userAId);
+      io.to(requesterId.toString()).emit("friend:accepted", addresseeId);
+      io.to(addresseeId.toString()).emit("friend:accepted", requesterId);
     }
     return request;
   } catch (err) {
@@ -301,4 +340,5 @@ module.exports = {
   getPendingRequests,
   getRelationshipStatus,
   searchUsers,
+  setSocketInstance,
 };

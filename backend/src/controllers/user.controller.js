@@ -38,6 +38,21 @@ async function updateProfile(req, res) {
   }
 }
 
+// Lấy thông tin profile của user khác
+async function getUserProfile(req, res) {
+  try {
+    const { userId } = req.params;
+    const user = await userService.getUserProfile(userId);
+
+    if (!user) return response.error(res, "User not found", 404);
+
+    return response.success(res, user, "Get user profile success");
+  } catch (err) {
+    logger.error(`getUserProfile error: ${err}`);
+    return response.error(res, err.message, 500);
+  }
+}
+
 // Lấy leaderboard
 async function getLeaderboard(req, res) {
   try {
@@ -51,6 +66,7 @@ async function getLeaderboard(req, res) {
 
 module.exports = {
   getProfile,
+  getUserProfile,
   updateProfile,
   getLeaderboard,
 };

@@ -79,8 +79,58 @@ const getLeaderboard = async (gameId = "caro") => {
   }
 };
 
+// Cập nhật gameStats khi game kết thúc
+const updateGameStats = async (userId, gameId = "caro", isWin, isDraw = false) => {
+  try {
+    const user = await User.findById(userId);
+    if (!user) {
+      logger.warn(`User not found for stats update: ${userId}`);
+      return;
+    }
+
+    // Tìm hoặc tạo gameStats cho game này
+    let gameStat = user.gameStats.find(s => s.gameId === gameId);
+    
+    if (!gameStat) {
+      // Tạo mới gameStats
+      gameStat = {
+        gameId: gameId,
+        nameGame: "Cờ Caro",
+        totalGames: 0,
+        totalWin: 0,
+        totalLose: 0,
+        score: 1000, // Điểm khởi đầu
+      };
+      user.gameStats.push(gameStat);
+    }
+
+    // Cập nhật thống kê
+    gameStat.totalGames += 1;
+    
+    if (isDraw) {
+      // Hòa: không thay đổi điểm nhiều
+      gameStat.score = Math.max(0, gameStat.score + 0);
+    } else if (isWin) {
+      gameStat.totalWin += 1;
+      // Thắng: +20 điểm
+      gameStat.score += 20;
+    } else {
+      gameStat.totalLose += 1;
+      // Thua: -10 điểm
+      gameStat.score = Math.max(0, gameStat.score - 10);
+    }
+
+    await user.save();
+    logger.info(`Updated game stats for user ${userId}: ${isWin ? 'Win' : isDraw ? 'Draw' : 'Lose'}`);
+  } catch (err) {
+    logger.error("updateGameStats error: %o", err);
+    throw err;
+  }
+};
+
 module.exports = {
   getUserProfile,
   updateUserProfile,
   getLeaderboard,
+  updateGameStats,
 };

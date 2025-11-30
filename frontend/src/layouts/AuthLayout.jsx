@@ -1,27 +1,33 @@
 // AuthLayout.jsx
+// Layout cho các trang Login, Register, Forgot Password
 
-// Mục đích: Dùng cho các trang Login, Register, Forgot Password.
+import { Outlet, Link } from 'react-router-dom';
+import '../styles/global.css';
 
-// Đặc điểm:
+function AuthLayout() {
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-blue-500 via-purple-500 to-pink-500 flex items-center justify-center p-4">
+      <div className="w-full max-w-md">
+        {/* Logo */}
+        <div className="text-center mb-8">
+          <Link to="/" className="inline-block">
+            <h1 className="text-4xl font-bold text-white mb-2">🎮 Caro Online</h1>
+            <p className="text-white/80 text-sm">Chơi cờ caro trực tuyến</p>
+          </Link>
+        </div>
 
-// Giao diện đơn giản, ẩn Navbar và Sidebar.
+        {/* Form Container */}
+        <div className="bg-white rounded-2xl shadow-2xl p-8">
+          <Outlet />
+        </div>
 
-// Có thể có hình nền hoặc animation nhẹ để tạo cảm giác thân thiện.
+        {/* Footer */}
+        <div className="text-center mt-6 text-white/80 text-sm">
+          <p>© 2024 Caro Online. All rights reserved.</p>
+        </div>
+      </div>
+    </div>
+  );
+}
 
-// Chỉ chứa phần form ở giữa màn hình.
-
-// Thành phần chính:
-
-// <Outlet /> → nơi render các trang con (login/register).
-
-// (Tuỳ chọn) Footer nhỏ hoặc link “Quay lại trang chủ”.
-
-// 📝 Ví dụ khung bố cục (mô tả, không cần code)
-
-// +----------------------------------------------------+
-// |                 Logo Caro Online                   |
-// |                                                    |
-// |            [ Login / Register Form ]               |
-// |                                                    |
-// |            “Don’t have an account? Sign up”        |
-// +----------------------------------------------------+
+export default AuthLayout;

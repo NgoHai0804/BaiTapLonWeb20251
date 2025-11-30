@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Test Caro Socket</title>
+    <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+    <style>
+      body {
+        font-family: sans-serif;
+        margin: 20px;
+      }
+
+      input,
+      button {
+        margin: 5px;
+      }
+
+      pre {
+        background: #f0f0f0;
+        padding: 10px;
+        max-height: 300px;
+        overflow: auto;
+      }
+    </style>
+  </head>
+
+  <body>
+    <h2>Test Socket Caro</h2>
+
+    <div>
+      <label
+        >JWT Token:
+        <input type="text" id="tokenInput" style="width: 400px" /></label
+      ><br />
+      <label>Room Name: <input type="text" id="roomName" value="TEST" /></label>
+      <label
+        >Password (for create):
+        <input type="text" id="roomPassword" value="123"
+      /></label>
+      <label
+        >Max Players:
+        <input type="number" id="roomMax" value="2" min="2" max="10" /></label
+      ><br />
+      <label
+        >Room ID (for join):
+        <input
+          type="text"
+          id="roomIdInput"
+          placeholder="Nhập Room ID để join"
+          style="width: 200px" /></label
+      ><br />
+      <label
+        >Password (for join):
+        <input
+          type="text"
+          id="joinPassword"
+          value="123"
+          style="width: 200px" /></label
+      ><br />
+      <button id="connectBtn">Kết nối Socket</button>
+      <button id="joinBtn">Tạo & Join phòng</button>
+      <button id="directJoinBtn">Join Room</button>
+      <button id="readyBtn">Ready</button>
+      <button id="startBtn">Start game</button>
+      <button id="moveBtn">Move (random)</button>
+      <button id="drawBtn">Draw</button>
+      <button id="acceptDrawBtn">Accept Draw</button>
+      <button id="resignBtn">Resign</button>
+      <button id="leaveBtn">Leave Room</button>
+    </div>
+
+    <pre id="log"></pre>
+
+    <script>
+      const logEl = document.getElementById("log");
+
+      function log(msg, data) {
+        logEl.textContent +=
+          msg + (data ? " " + JSON.stringify(data, null, 2) : "") + "\n";
+      }
+
+      let socket = null,
+        roomId = null,
+        myMark = null,
+        boardSize = 20;
+
+      // ----- CONNECT SOCKET -----
+      document.getElementById("connectBtn").onclick = () => {
+        const token = document.getElementById("tokenInput").value.trim();
+        if (!token) return alert("Nhập JWT token!");
+
+        socket = io("http://localhost:5000", {
+          auth: {
+            token,
+          },
+        });
+
+        socket.on("connect", () =>
+          log("✅ Connected", {
+            id: socket.id,
+          })
+        );
+        socket.on("disconnect", (reason) => log("❌ Disconnected", reason));
+
+        socket.on("room_update", (data) => log("📢 Room updated", data));
+        socket.on("game_start", (data) => {
+          log("🎮 Game started", data);
+          // Sửa lỗi syntax: me?.mark
+          const me = data.players.find((p) => p.userId === socket.user?._id);
+          myMark = me?.mark || "X";
+          log("My mark", { mark: myMark });
+        });
+        socket.on("opponent_move", (data) => log("🟢 Opponent moved", data));
+        socket.on("match_end", (data) => log("🏁 Match ended", data));
+        socket.on("match_draw", () => log("🤝 Match draw"));
+        socket.on("draw_request_from_opponent", () =>
+          log("✋ Draw request received")
+        );
+        socket.on("join_error", (data) => log("❌ Join error", data));
+        socket.on("move_rejected", (data) => log("❌ Move rejected", data)); // Thêm để debug reject
+
+        // Ping server mỗi 5s (giữ nhưng không log nếu không cần)
+        setInterval(() => {
+          if (socket && socket.connected) {
+            socket.emit("ping_server");
+            // log("📡 Ping sent"); // Tắt log để sạch
+          }
+        }, 5000);
+      };
+
+      // ----- CREATE & JOIN ROOM -----
+      document.getElementById("joinBtn").onclick = async () => {
+        const token = document.getElementById("tokenInput").value.trim();
+        if (!token) return alert("Nhập JWT token!");
+        const name = document.getElementById("roomName").value.trim() || "TEST";
+        const password = document.getElementById("roomPassword").value.trim();
+        const maxPlayers =
+          parseInt(document.getElementById("roomMax").value) || 2;
+
+        // Tạo phòng qua API
+        const resp = await fetch("http://localhost:5000/api/room/create", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: "Bearer " + token,
+          },
+          body: JSON.stringify({
+            name,
+            password,
+            maxPlayers,
+          }),
+        });
+        const data = await resp.json();
+        if (data.error) return log("❌ Create room error", data);
+        roomId = data.data._id;
+        log("✅ Room created", data.data);
+
+        // Join phòng
+        socket.emit("join_room", {
+          roomId,
+          password,
+        });
+      };
+
+      // ----- DIRECT JOIN ROOM -----
+      document.getElementById("directJoinBtn").onclick = () => {
+        const roomIdInput = document.getElementById("roomIdInput").value.trim();
+        const password = document.getElementById("joinPassword").value.trim();
+        if (!roomIdInput) return alert("Nhập Room ID!");
+        if (!password) return alert("Nhập Password (for join)!");
+
+        roomId = roomIdInput;
+        log("🔗 Attempting to join room", { roomId });
+
+        socket.emit("join_room", {
+          roomId,
+          password,
+        });
+      };
+
+      // ----- READY -----
+      document.getElementById("readyBtn").onclick = () => {
+        if (!roomId) return alert("Chưa có room");
+        socket.emit("player_ready", {
+          roomId,
+        });
+      };
+
+      // ----- START ----- (Giữ nhưng comment nếu dùng auto-start từ ready)
+      document.getElementById("startBtn").onclick = () => {
+        if (!roomId) return alert("Chưa có room");
+        socket.emit("start_game", {
+          roomId,
+        });
+      };
+
+      // ----- MOVE -----
+      document.getElementById("moveBtn").onclick = () => {
+        if (!roomId || !myMark) return alert("Chưa bắt đầu game");
+        // Thêm check bounds cho random
+        const x = Math.floor(Math.random() * boardSize);
+        const y = Math.floor(Math.random() * boardSize);
+        log("➡️ Move", {
+          x,
+          y,
+          mark: myMark,
+        });
+        socket.emit("player_move", {
+          roomId,
+          x,
+          y,
+        });
+      };
+
+      // Các button khác giữ nguyên...
+      // ----- DRAW -----
+      document.getElementById("drawBtn").onclick = () => {
+        if (!roomId) return alert("Chưa có room");
+        socket.emit("draw_request", {
+          roomId,
+        });
+      };
+
+      // ----- ACCEPT DRAW -----
+      document.getElementById("acceptDrawBtn").onclick = () => {
+        if (!roomId) return alert("Chưa có room");
+        socket.emit("draw_accept", {
+          roomId,
+        });
+      };
+
+      // ----- RESIGN -----
+      document.getElementById("resignBtn").onclick = () => {
+        if (!roomId) return alert("Chưa có room");
+        socket.emit("resign", {
+          roomId,
+        });
+      };
+
+      // ----- LEAVE -----
+      document.getElementById("leaveBtn").onclick = () => {
+        if (!roomId) return alert("Chưa có room");
+        socket.emit("leave_room", {
+          roomId,
+        });
+        roomId = null;
+        myMark = null;
+      };
+    </script>
+  </body>
+</html>

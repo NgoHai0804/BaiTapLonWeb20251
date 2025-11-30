@@ -1,20 +1,44 @@
-// chatApi.js
+import axios from 'axios';
 
-// Làm việc với tin nhắn — chat trong phòng hoặc chat riêng giữa 2 người.
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
 
-// Nhiệm vụ:
+const api = axios.create({
+  baseURL: API_URL,
+  headers: {
+    'Content-Type': 'application/json',
+  },
+});
 
-// Lấy lịch sử chat (GET /chat/history?roomId=... hoặc GET /chat/private?userId=...).
+// Add token to requests
+api.interceptors.request.use((config) => {
+  let token = localStorage.getItem('auth_token');
+  
+  if (token) {
+    // Loại bỏ dấu ngoặc kép nếu có
+    token = token.replace(/^"(.*)"$/, '$1');
+    // Loại bỏ khoảng trắng thừa
+    token = token.trim();
+    config.headers.Authorization = `Bearer ${token}`;
+  }
+  return config;
+});
 
-// Lưu tin nhắn (nếu backend có lưu DB) (POST /chat/save).
+export const chatApi = {
+  getRoomChat: async (roomId) => {
+    const response = await api.get(`/api/chat/room/${roomId}`);
+    return response.data;
+  },
 
-// Đánh dấu tin nhắn đã đọc (POST /chat/read).
+  getPrivateChat: async (userId) => {
+    const response = await api.get(`/api/chat/private/${userId}`);
+    // Backend trả về { success: true, message, data }
+    return response.data.data || response.data;
+  },
 
-// Gợi ý cấu trúc:
+  markAsRead: async (chatId) => {
+    const response = await api.post(`/api/chat/read/${chatId}`);
+    return response.data;
+  },
+};
 
-// chatApi = {
-//   getRoomChat(roomId),
-//   getPrivateChat(userId),
-//   sendMessage(data),
-//   markAsRead(chatId)
-// }
+export default chatApi;

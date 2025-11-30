@@ -1,2 +1,3 @@
 # Loại trừ node_modules, .env, logs khỏi git
 .env
+.node_modules

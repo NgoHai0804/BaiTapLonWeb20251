@@ -1,25 +1,71 @@
-// roomApi.js
+import axios from 'axios';
 
-// Quản lý các phòng chơi (rooms) — tương tác chính trong hệ thống game.
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
 
-// Nhiệm vụ:
+const api = axios.create({
+  baseURL: API_URL,
+  headers: {
+    'Content-Type': 'application/json',
+  },
+});
 
-// Lấy danh sách phòng (GET /rooms).
+// Add token to requests
+api.interceptors.request.use((config) => {
+  let token = localStorage.getItem('auth_token');
+  
+  if (token) {
+    // Loại bỏ dấu ngoặc kép nếu có
+    token = token.replace(/^"(.*)"$/, '$1');
+    // Loại bỏ khoảng trắng thừa
+    token = token.trim();
+    config.headers.Authorization = `Bearer ${token}`;
+  }
+  return config;
+});
 
-// Tạo phòng mới (POST /rooms).
+const API_ENDPOINTS = {
+  LIST: '/api/rooms/list',
+  CREATE: '/api/rooms/create',
+  JOIN: '/api/rooms/join',
+  LEAVE: '/api/rooms/leave',
+  GET: (id) => `/api/rooms/${id}`,
+};
 
-// Tham gia phòng (POST /rooms/join).
+export const roomApi = {
+  getRooms: async (params = {}) => {
+    const response = await api.get(API_ENDPOINTS.LIST, { params });
+    return response.data.data || response.data;
+  },
 
-// Thoát phòng (POST /rooms/leave).
+  createRoom: async (roomData) => {
+    try {
+      const response = await api.post(API_ENDPOINTS.CREATE, roomData);
+      // Backend trả về { success: true, data: {...}, message: "..." }
+      if (response.data.success && response.data.data) {
+        return { room: response.data.data };
+      }
+      // Fallback
+      return { room: response.data.data || response.data };
+    } catch (error) {
+      console.error('createRoom API error:', error);
+      throw error;
+    }
+  },
 
-// Cập nhật trạng thái phòng (bắt đầu game, kết thúc,…).
+  joinRoom: async (roomId, password = '') => {
+    const response = await api.post(API_ENDPOINTS.JOIN, { roomId, password });
+    return response.data.data || response.data;
+  },
 
-// Gợi ý cấu trúc:
+  leaveRoom: async (roomId) => {
+    const response = await api.post(API_ENDPOINTS.LEAVE, { roomId });
+    return response.data.data || response.data;
+  },
 
-// roomApi = {
-//   getRooms(params),
-//   createRoom(data),
-//   joinRoom(id, password),
-//   leaveRoom(id),
-//   startGame(id)
-// }
+  getRoom: async (roomId) => {
+    const response = await api.get(API_ENDPOINTS.GET(roomId));
+    return response.data.data || response.data;
+  },
+};
+
+export default roomApi;

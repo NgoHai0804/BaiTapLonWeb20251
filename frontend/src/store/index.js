@@ -1,13 +1,17 @@
 import { configureStore } from '@reduxjs/toolkit'
-
-// Import slices here (create empty ones if needed or just a dummy reducer for now)
-// import userReducer from './userSlice'
-// import gameReducer from './gameSlice'
+import userReducer from './userSlice'
+import gameReducer from './gameSlice'
+import roomReducer from './roomSlice'
+import chatReducer from './chatSlice'
+import notificationReducer from './notificationSlice'
 
 const store = configureStore({
     reducer: {
-        // user: userReducer,
-        // game: gameReducer,
+        user: userReducer,
+        game: gameReducer,
+        room: roomReducer,
+        chat: chatReducer,
+        notification: notificationReducer,
     },
 })
 

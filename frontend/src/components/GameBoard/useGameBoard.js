@@ -1,13 +1,29 @@
-// ⚙️ useGameBoard.js
+import { useState, useCallback } from 'react';
+import { BOARD_SIZE } from '../../utils/constants';
 
-// Custom React Hook xử lý toàn bộ logic trò chơi:
+export const useGameBoard = (onCellClick) => {
+  const [hoveredCell, setHoveredCell] = useState(null);
 
-// Luật thắng (5 in a row).
+  const handleCellHover = useCallback((x, y) => {
+    setHoveredCell({ x, y });
+  }, []);
 
-// Undo/redo (khi chơi với bot).
+  const handleCellLeave = useCallback(() => {
+    setHoveredCell(null);
+  }, []);
 
-// Quản lý lượt đi, danh sách nước đi, trạng thái bàn cờ.
+  const handleCellClick = useCallback((x, y) => {
+    if (onCellClick) {
+      onCellClick(x, y);
+    }
+  }, [onCellClick]);
 
-// Trả về dữ liệu và hàm điều khiển (handleMove, resetGame, undo, redo, ...).
+  return {
+    hoveredCell,
+    handleCellHover,
+    handleCellLeave,
+    handleCellClick,
+  };
+};
 
-// Có thể tách logic giữa chế độ P2P và P2B (vs Bot).
+export default useGameBoard;

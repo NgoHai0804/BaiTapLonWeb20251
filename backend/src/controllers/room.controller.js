@@ -12,6 +12,7 @@ async function createRoom(req, res) {
       password,
       maxPlayers,
       hostId: req.user._id,
+      hostUsername: req.user.username || req.user.nickname,
     });
     logger.info(`Tạo phòng ${room._id}`);
     return response.success(res, room, "Tạo phòng thành công", 201);
@@ -29,6 +30,7 @@ async function joinRoom(req, res) {
       roomId,
       password,
       userId: req.user._id,
+      username: req.user.username,
     });
 
     req.io.to(room._id.toString()).emit("room:update", room);

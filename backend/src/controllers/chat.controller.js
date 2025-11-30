@@ -1,13 +1,58 @@
 // chat.controller.js
-
 // Quản lý tin nhắn giữa người chơi (cả trong phòng và riêng tư).
 
-// Chức năng:
+const response = require("../utils/response");
+const chatService = require("../services/chat.service");
+const UserService = require("../services/user.service");
+const logger = require("../utils/logger");
 
-// Lưu tin nhắn vào DB.
+// Lấy lịch sử chat của phòng
+async function getRoomChat(req, res) {
+  try {
+    const { roomId } = req.params;
+    const messages = await chatService.getRoomMessages(roomId, 50);
+    return response.success(res, { messages }, "Get room chat success");
+  } catch (err) {
+    logger.error(`getRoomChat error: ${err}`);
+    return response.error(res, err.message, 500);
+  }
+}
 
-// Lấy lịch sử trò chuyện.
+// Lấy lịch sử chat riêng
+async function getPrivateChat(req, res) {
+  try {
+    const { userId } = req.params;
+    const currentUserId = req.user._id;
+    
+    // Lấy thông tin người bạn chat
+    const friend = await UserService.getUserProfile(userId);
+    
+    // Lấy lịch sử chat
+    const messages = await chatService.getPrivateMessages(currentUserId, userId, 50);
+    
+    return response.success(res, { messages, friend }, "Get private chat success");
+  } catch (err) {
+    logger.error(`getPrivateChat error: ${err}`);
+    return response.error(res, err.message, 500);
+  }
+}
 
-// Gửi tin nhắn mới qua Socket.IO.
+// Đánh dấu tin nhắn đã đọc
+async function markAsRead(req, res) {
+  try {
+    const { messageId } = req.params;
+    const userId = req.user._id;
+    
+    await chatService.markMessageAsRead(messageId, userId);
+    return response.success(res, {}, "Message marked as read");
+  } catch (err) {
+    logger.error(`markAsRead error: ${err}`);
+    return response.error(res, err.message, 500);
+  }
+}
 
-// Cho phép xóa/sửa tin nhắn nếu có quyền.
+module.exports = {
+  getRoomChat,
+  getPrivateChat,
+  markAsRead,
+};

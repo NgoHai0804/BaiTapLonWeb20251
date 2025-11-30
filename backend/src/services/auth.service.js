@@ -31,8 +31,17 @@ async function register({ username, password, nickname }) {
     const passwordHash = await hashPassword(password);
     const user = await User.create({ username, passwordHash, nickname });
 
+    // Generate token after registration
+    const token = signToken(user);
     logger.info(`User registered: ${username} (${user._id})`);
-    return { data: { id: user._id, username: user.username, nickname: user.nickname } };
+    return { 
+      data: { 
+        id: user._id, 
+        username: user.username, 
+        nickname: user.nickname,
+        token: token,
+      } 
+    };
   } catch (err) {
     logger.error(`Register failed: ${err.message}`);
     return { error: err.message };

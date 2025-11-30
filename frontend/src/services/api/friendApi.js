@@ -1,24 +1,64 @@
-// friendApi.js
+import axios from 'axios';
 
-// Quản lý danh sách bạn bè, lời mời, trạng thái online/offline.
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
 
-// Nhiệm vụ:
+const api = axios.create({
+  baseURL: API_URL,
+  headers: {
+    'Content-Type': 'application/json',
+  },
+});
 
-// Lấy danh sách bạn bè (GET /friends).
+// Add token to requests
+api.interceptors.request.use((config) => {
+  let token = localStorage.getItem('auth_token');
+  
+  if (token) {
+    // Loại bỏ dấu ngoặc kép nếu có
+    token = token.replace(/^"(.*)"$/, '$1');
+    // Loại bỏ khoảng trắng thừa
+    token = token.trim();
+    config.headers.Authorization = `Bearer ${token}`;
+  }
+  return config;
+});
 
-// Gửi lời mời kết bạn (POST /friends/invite).
+export const friendApi = {
+  getFriends: async () => {
+    const response = await api.get('/api/friend');
+    return response.data;
+  },
 
-// Chấp nhận hoặc từ chối lời mời (POST /friends/respond).
+  sendRequest: async (addresseeId) => {
+    const response = await api.post('/api/friend/request', { addresseeId });
+    return response.data;
+  },
 
-// Xóa bạn (DELETE /friends/:id).
+  getRequests: async () => {
+    const response = await api.get('/api/friend/requests');
+    // Backend trả về { success: true, message, data }
+    return response.data.data || response.data;
+  },
 
-// Kiểm tra trạng thái online (GET /friends/status hoặc qua socket).
+  acceptRequest: async (requesterId) => {
+    const response = await api.post('/api/friend/accept', { requesterId });
+    return response.data;
+  },
 
-// Gợi ý cấu trúc:
+  cancelRequest: async (requesterId) => {
+    const response = await api.post('/api/friend/cancel', { requesterId });
+    return response.data;
+  },
 
-// friendApi = {
-//   getFriends(),
-//   inviteFriend(userId),
-//   respondInvite(inviteId, status),
-//   removeFriend(userId)
-// }
+  searchUser: async (nickname, userID) => {
+    const response = await api.post('/api/friend/search', { nickname, userID });
+    return response.data;
+  },
+
+  removeFriend: async (friendId) => {
+    const response = await api.post('/api/friend/unfriend', { friendId });
+    return response.data;
+  },
+};
+
+export default friendApi;
