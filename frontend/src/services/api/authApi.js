@@ -1,38 +1,43 @@
-import axiosInstance from './axios'
+import apiClient from './apiClient';
+import { API_ENDPOINTS } from '../../utils/constants';
 
-const authApi = {
-    // Đăng ký tài khoản mới
-    register: async (data) => {
-        return await axiosInstance.post('/api/auth/register', data)
-    },
+export const authApi = {
+  login: async (credentials) => {
+    try {
+      const response = await apiClient.post(API_ENDPOINTS.AUTH.LOGIN, credentials);
+      return response.data.data || response.data;
+    } catch (error) {
+      // Trích xuất thông báo lỗi từ response
+      const errorMessage = error.response?.data?.message || error.message || 'Đăng nhập thất bại';
+      throw new Error(errorMessage);
+    }
+  },
 
-    // Đăng nhập
-    login: async (data) => {
-        return await axiosInstance.post('/api/auth/login', data)
-    },
+  register: async (userData) => {
+    const response = await apiClient.post(API_ENDPOINTS.AUTH.REGISTER, userData);
+    return response.data.data || response.data;
+  },
 
-    // Đăng xuất
-    logout: async () => {
-        return await axiosInstance.post('/api/auth/logout')
-    },
+  logout: async () => {
+    const response = await apiClient.post(API_ENDPOINTS.AUTH.LOGOUT);
+    return response.data;
+  },
 
-    // Lấy thông tin user hiện tại
-    getCurrentUser: async () => {
-        return await axiosInstance.get('/api/auth/me')
-    },
+  refresh: async (refreshToken) => {
+    try {
+      const response = await apiClient.post(API_ENDPOINTS.AUTH.REFRESH, { refreshToken });
+      return response.data.data || response.data;
+    } catch (error) {
+      const errorMessage = error.response?.data?.message || error.message || 'Refresh token thất bại';
+      throw new Error(errorMessage);
+    }
+  },
 
-    // Quên mật khẩu - gửi email
-    forgotPassword: async (email) => {
-        return await axiosInstance.post('/api/auth/forgot-password', { email })
-    },
+  forgotPassword: async (email) => {
+    const response = await apiClient.post(API_ENDPOINTS.AUTH.FORGOT_PASSWORD, { email });
+    return response.data;
+  },
+};
 
-    // Reset mật khẩu với token
-    resetPassword: async (token, newPassword) => {
-        return await axiosInstance.post('/api/auth/reset-password', {
-            token,
-            newPassword,
-        })
-    },
-}
+export default authApi;
 
-export default authApi
