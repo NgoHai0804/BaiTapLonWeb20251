@@ -10,4 +10,20 @@ export default defineConfig({
       '@': path.resolve(__dirname, './src'),
     },
   },
+  server: {
+    host: true, // Cho phép truy cập từ bên ngoài (0.0.0.0)
+    port: 5173,
+    strictPort: false,
+    // Cho phép các host ngrok
+    allowedHosts: [
+      '5ab76e29a5b1.ngrok-free.app',
+      '6b58ee547915.ngrok-free.app', // Ngrok URL mới
+      'localhost',
+      '.ngrok-free.app', // Cho phép tất cả subdomain ngrok
+      '.ngrok.io', // Cho phép tất cả subdomain ngrok cũ
+    ],
+    hmr: {
+      clientPort: 5173, // Port cho HMR
+    },
+  },
 })

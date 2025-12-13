@@ -10,7 +10,8 @@
 // Phát thông báo cho các thành viên phòng khi có thay đổi.
 
 const RoomService = require("../services/room.service");
-const { initGameForRoom } = require("./game.socket");
+const UserService = require("../services/user.service");
+const { initGameForRoom, getGameState, roomGames } = require("./game.socket");
 
 /** Log helper */
 function now() { return `[${new Date().toISOString().replace("T", " ").split(".")[0]}]`; }
@@ -38,16 +39,17 @@ async function handleJoinRoom(io, socket, data) {
   const { roomId, password } = data;
   const userId = socket.user._id;
   const username = socket.user.username;
+  const nickname = socket.user.nickname || socket.user.username;
   const joinKey = `${userId}_${roomId}`;
 
   // Kiểm tra xem đã có request join đang xử lý chưa
   if (joiningUsers.has(joinKey)) {
-    log("join_room duplicate request ignored", { roomId, userId, username });
+    log("join_room request trùng lặp đã bị bỏ qua", { roomId, userId, username });
     return;
   }
 
   joiningUsers.set(joinKey, true);
-  log("join_room request", { roomId, userId, username });
+  log("Yêu cầu join_room", { roomId, userId, username });
 
   try {
     // Kiểm tra xem user đã ở trong phòng chưa (trước khi join)
@@ -71,16 +73,17 @@ async function handleJoinRoom(io, socket, data) {
     if (!wasAlreadyInRoom) {
       socket.to(roomIdStr).emit("player_joined", { 
         userId, 
-        username, 
+        username,
+        nickname,
         room: roomAfterJoin,
-        message: `${username} đã tham gia phòng`,
+        message: `${nickname} đã tham gia phòng`,
         timestamp: new Date().toISOString() 
       });
 
       // 3️⃣ Thông báo cho tất cả user trong phòng về sự thay đổi trạng thái phòng
       io.to(roomIdStr).emit("room_update", {
         room: roomAfterJoin,
-        message: `${username} đã tham gia phòng`,
+        message: `${nickname} đã tham gia phòng`,
         timestamp: new Date().toISOString()
       });
     } else {
@@ -92,10 +95,10 @@ async function handleJoinRoom(io, socket, data) {
       });
     }
 
-    log("Player joined successfully", { roomId: roomIdStr, userId, username, wasReconnect: wasAlreadyInRoom });
+    log("Người chơi đã tham gia thành công", { roomId: roomIdStr, userId, username, wasReconnect: wasAlreadyInRoom });
 
   } catch (err) {
-    log("join_room error", err.message);
+    log("Lỗi join_room", err.message);
     socket.emit("join_error", { message: err.message });
   } finally {
     // Xóa khỏi map sau 1 giây để cho phép retry nếu cần
@@ -110,9 +113,10 @@ async function handlePlayerReady(io, socket, data) {
   const { roomId, isReady } = data;
   const userId = socket.user._id;
   const username = socket.user.username;
+  const nickname = socket.user.nickname || socket.user.username;
   const roomIdStr = roomId.toString();
 
-  log("player_ready", { roomId: roomIdStr, userId, username, isReady });
+  log("player_ready được gọi", { roomId: roomIdStr, userId, username, isReady });
 
   try {
     const roomBefore = await RoomService.getRoomById(roomIdStr);
@@ -138,7 +142,7 @@ async function handlePlayerReady(io, socket, data) {
       isReady: roomAfter.players.find(p => p.userId.toString() === userId.toString())?.isReady || false,
       room: roomAfter,
       allNonHostReady: allNonHostReady,
-      message: `${username} ${isReady !== false ? 'đã sẵn sàng' : 'đã hủy sẵn sàng'}`,
+      message: `${nickname} ${isReady !== false ? 'đã sẵn sàng' : 'đã hủy sẵn sàng'}`,
       timestamp: new Date().toISOString() 
     });
 
@@ -146,14 +150,14 @@ async function handlePlayerReady(io, socket, data) {
     io.to(roomIdStr).emit("room_update", {
       room: roomAfter,
       allNonHostReady: allNonHostReady,
-      message: `${username} ${isReady !== false ? 'đã sẵn sàng' : 'đã hủy sẵn sàng'}`,
+      message: `${nickname} ${isReady !== false ? 'đã sẵn sàng' : 'đã hủy sẵn sàng'}`,
       timestamp: new Date().toISOString()
     });
 
     // Không tự động start game nữa, chủ phòng phải bấm nút start
 
   } catch (err) {
-    log("player_ready error", err.message);
+    log("Lỗi player_ready", err.message);
     socket.emit("ready_error", { message: err.message });
   }
 }
@@ -163,9 +167,10 @@ async function handleStartGame(io, socket, data) {
   const { roomId } = data;
   const userId = socket.user._id;
   const username = socket.user.username;
+  const nickname = socket.user.nickname || socket.user.username;
   const roomIdStr = roomId.toString();
 
-  log("start_game", { roomId: roomIdStr, userId, username });
+  log("start_game được gọi", { roomId: roomIdStr, userId, username, nickname });
 
   try {
     const room = await RoomService.getRoomById(roomIdStr);
@@ -197,8 +202,8 @@ async function handleStartGame(io, socket, data) {
 
     const roomAfter = await RoomService.updateRoom(roomIdStr, { status: "playing" });
 
-    // Khởi tạo game state
-    initGameForRoom(roomIdStr, roomAfter.players);
+    // Khởi tạo game state (async vì cần lưu playerMarks vào DB)
+    const gameState = await initGameForRoom(roomIdStr, roomAfter.players);
 
     // Khởi tạo ping tracking cho tất cả players trong phòng
     if (!roomPlayerPings.has(roomIdStr)) {
@@ -214,11 +219,40 @@ async function handleStartGame(io, socket, data) {
       }
     });
 
+    // Bắt đầu timer cho lượt đầu tiên
+    const turnTimeLimit = roomAfter.turnTimeLimit || 30;
+    try {
+      const { startTurnTimer } = require("./game.socket");
+      if (startTurnTimer && typeof startTurnTimer === 'function') {
+        startTurnTimer(io, roomIdStr, turnTimeLimit);
+      } else {
+        log("Cảnh báo: startTurnTimer không khả dụng", { roomId: roomIdStr });
+      }
+    } catch (timerError) {
+      log("Lỗi khi bắt đầu turn timer", timerError.message);
+      // Không throw error, chỉ log để game vẫn có thể bắt đầu
+    }
+
+    // Convert playerMarks Map to Object for JSON
+    const playerMarksObj = roomAfter.playerMarks 
+      ? (roomAfter.playerMarks instanceof Map 
+          ? Object.fromEntries(roomAfter.playerMarks) 
+          : roomAfter.playerMarks)
+      : {};
+
     // 1️⃣ Thông báo cho tất cả user trong phòng về việc game bắt đầu
     io.to(roomIdStr).emit("game_start", { 
       players: roomAfter.players,
       room: roomAfter,
-      message: `${username} (chủ phòng) đã bắt đầu game!`,
+      board: gameState.board,
+      turn: gameState.turn,
+      currentPlayerIndex: gameState.currentPlayerIndex,
+      history: gameState.history || [],
+      playerMarks: playerMarksObj,
+      turnTimeLimit: turnTimeLimit,
+      turnStartTime: gameState.turnStartTime, // Gửi turnStartTime để client đồng bộ timer
+      firstTurn: roomAfter.firstTurn || 'X',
+      message: `${nickname} (chủ phòng) đã bắt đầu game!`,
       timestamp: new Date().toISOString()
     });
 
@@ -229,11 +263,130 @@ async function handleStartGame(io, socket, data) {
       timestamp: new Date().toISOString()
     });
 
-    log("Game started by owner", { roomId: roomIdStr, userId, username });
+    // 3️⃣ Cập nhật status = 'in_game' cho tất cả players
+    try {
+      roomAfter.players.forEach(async (player) => {
+        if (player.userId) {
+          await UserService.updateUserStatus(player.userId.toString(), "in_game");
+        }
+      });
+    } catch (statusError) {
+      log("Lỗi khi cập nhật trạng thái player thành in_game", statusError.message);
+    }
+
+    log("Game đã được bắt đầu bởi chủ phòng", { roomId: roomIdStr, userId, username });
 
   } catch (err) {
-    log("start_game error", err.message);
-    socket.emit("start_error", { message: err.message });
+    log("Lỗi start_game", err.message);
+    log("Stack trace lỗi start_game", err.stack);
+    socket.emit("start_error", { 
+      message: err.message || "Có lỗi xảy ra khi bắt đầu game",
+      error: process.env.NODE_ENV === 'development' ? err.stack : undefined
+    });
+  }
+}
+
+/** ----------------- UPDATE ROOM SETTINGS ----------------- */
+async function handleUpdateRoomSettings(io, socket, data) {
+  const { roomId, playerMarks, turnTimeLimit, firstTurn } = data;
+  const userId = socket.user._id;
+  const username = socket.user.username;
+  const nickname = socket.user.nickname || socket.user.username;
+  const roomIdStr = roomId.toString();
+
+  log("update_room_settings được gọi", { roomId: roomIdStr, userId, username, playerMarks, turnTimeLimit, firstTurn });
+
+  try {
+    const room = await RoomService.getRoomById(roomIdStr);
+    if (!room) {
+      socket.emit("room_settings_error", { message: "Phòng không tồn tại" });
+      return;
+    }
+
+    // Chỉ chủ phòng mới có thể chỉnh sửa
+    if (room.hostId?.toString() !== userId.toString()) {
+      socket.emit("room_settings_error", { message: "Chỉ chủ phòng mới có thể chỉnh sửa cài đặt" });
+      return;
+    }
+
+    // Chỉ cho phép chỉnh sửa khi phòng đang ở trạng thái "waiting"
+    if (room.status !== "waiting") {
+      socket.emit("room_settings_error", { message: "Chỉ có thể chỉnh sửa cài đặt khi phòng chưa bắt đầu game" });
+      return;
+    }
+
+    // Validate playerMarks nếu có
+    if (playerMarks) {
+      const marks = Object.values(playerMarks);
+      const xCount = marks.filter(m => m === 'X').length;
+      const oCount = marks.filter(m => m === 'O').length;
+      
+      if (room.players.length >= 2) {
+        if (xCount !== 1 || oCount !== 1) {
+          socket.emit("room_settings_error", { message: "Phải có đúng 1 người chơi X và 1 người chơi O" });
+          return;
+        }
+      }
+    }
+
+    // Validate turnTimeLimit nếu có
+    if (turnTimeLimit !== undefined) {
+      if (turnTimeLimit < 10 || turnTimeLimit > 300) {
+        socket.emit("room_settings_error", { message: "Thời gian mỗi lượt phải từ 10 đến 300 giây" });
+        return;
+      }
+    }
+
+    // Validate firstTurn nếu có
+    if (firstTurn !== undefined) {
+      if (firstTurn !== 'X' && firstTurn !== 'O') {
+        socket.emit("room_settings_error", { message: "Người đi trước phải là X hoặc O" });
+        return;
+      }
+    }
+
+    // Cập nhật room
+    const updateData = {};
+    if (playerMarks) {
+      updateData.playerMarks = playerMarks;
+    }
+    if (turnTimeLimit !== undefined) {
+      updateData.turnTimeLimit = turnTimeLimit;
+    }
+    if (firstTurn !== undefined) {
+      updateData.firstTurn = firstTurn;
+    }
+
+    const roomAfter = await RoomService.updateRoom(roomIdStr, updateData);
+
+    // Convert playerMarks Map to Object for JSON
+    const playerMarksObj = roomAfter.playerMarks 
+      ? (roomAfter.playerMarks instanceof Map 
+          ? Object.fromEntries(roomAfter.playerMarks) 
+          : roomAfter.playerMarks)
+      : {};
+
+    // Thông báo cho tất cả user trong phòng
+    io.to(roomIdStr).emit("room_settings_updated", {
+      room: roomAfter,
+      playerMarks: playerMarksObj,
+      turnTimeLimit: roomAfter.turnTimeLimit,
+      firstTurn: roomAfter.firstTurn || 'X',
+      message: `${nickname} đã cập nhật cài đặt phòng`,
+      timestamp: new Date().toISOString()
+    });
+
+    io.to(roomIdStr).emit("room_update", {
+      room: roomAfter,
+      message: "Cài đặt phòng đã được cập nhật",
+      timestamp: new Date().toISOString()
+    });
+
+    log("Cài đặt phòng đã được cập nhật", { roomId: roomIdStr, userId, username });
+
+  } catch (err) {
+    log("Lỗi update_room_settings", err.message);
+    socket.emit("room_settings_error", { message: err.message });
   }
 }
 
@@ -242,9 +395,10 @@ async function handleLeaveRoom(io, socket, data) {
   const { roomId } = data;
   const userId = socket.user._id;
   const username = socket.user.username;
+  const nickname = socket.user.nickname || socket.user.username;
   const roomIdStr = roomId.toString();
 
-  log("leave_room", { roomId: roomIdStr, userId, username });
+  log("leave_room được gọi", { roomId: roomIdStr, userId, username, nickname });
 
   try {
     const roomBefore = await RoomService.getRoomById(roomIdStr);
@@ -253,6 +407,89 @@ async function handleLeaveRoom(io, socket, data) {
       return;
     }
 
+    // Nếu đang chơi, tự động kết thúc game với kết quả là người còn lại thắng
+    if (roomBefore.status === "playing") {
+      log("Người chơi rời phòng khi đang chơi - tự động đầu hàng", { roomId: roomIdStr, userId, username });
+      
+      // Tìm người chơi còn lại (người thắng)
+      const winner = roomBefore.players.find(p => p.userId.toString() !== userId.toString());
+      const winnerNickname = winner?.nickname || winner?.username || "Đối thủ";
+      
+      if (winner) {
+        const gameResult = {
+          winner: winner.userId,
+          winnerUsername: winner.username,
+          winnerNickname: winnerNickname,
+          loser: userId,
+          loserUsername: username,
+          loserNickname: nickname,
+          message: `${nickname} đã rời phòng. ${winnerNickname} thắng!`,
+          isSurrender: true,
+          isLeaveRoom: true
+        };
+
+        // Kết thúc game
+        await RoomService.endGame({ 
+          roomId: roomIdStr, 
+          result: gameResult 
+        });
+
+        // Cập nhật gameStats cho người thắng và thua
+        try {
+          if (winner.userId) {
+            await UserService.updateGameStats(winner.userId, "caro", true, false);
+          }
+          if (userId) {
+            await UserService.updateGameStats(userId, "caro", false, false);
+          }
+        } catch (statsError) {
+          log("updateGameStats error when leaving room", statsError.message);
+          // Không block leave room nếu update stats lỗi
+        }
+
+        // Lấy game state nếu có
+        const game = getGameState(roomIdStr);
+        const roomAfterEnd = await RoomService.getRoomById(roomIdStr);
+
+        // Thông báo game_end cho tất cả user trong phòng
+        io.to(roomIdStr).emit("game_end", {
+          result: gameResult,
+          board: game?.board || null,
+          message: `${nickname} đã rời phòng. ${winnerNickname} thắng!`,
+          timestamp: new Date().toISOString()
+        });
+
+        // Cập nhật trạng thái phòng
+        io.to(roomIdStr).emit("room_update", {
+          room: roomAfterEnd,
+          message: "Game đã kết thúc",
+          timestamp: new Date().toISOString()
+        });
+
+        // Cập nhật status = 'online' cho tất cả players (nếu vẫn còn socket)
+        try {
+          roomAfterEnd.players.forEach(async (player) => {
+            if (player.userId) {
+              await UserService.updateUserStatus(player.userId.toString(), "online");
+            }
+          });
+        } catch (statusError) {
+          log("Error updating player status to online when leaving room", statusError.message);
+        }
+
+        // Cleanup ping tracking cho tất cả players
+        cleanupAllPingTracking(roomIdStr);
+
+        // Xóa game state
+        if (game && roomGames[roomIdStr]) {
+          delete roomGames[roomIdStr];
+        }
+
+        log("Game ended - player left room", { roomId: roomIdStr, winner: winner.username, loser: username });
+      }
+    }
+
+    // Rời phòng như bình thường
     const roomAfter = await RoomService.leaveRoom({ roomId: roomIdStr, userId });
 
     socketToRoom.delete(socket.id);
@@ -261,9 +498,18 @@ async function handleLeaveRoom(io, socket, data) {
     // Cleanup ping tracking khi rời phòng
     cleanupPingTracking(roomIdStr, userId.toString());
 
+    // Cập nhật status = 'online' khi rời phòng (nếu không đang chơi)
+    if (roomBefore.status !== "playing") {
+      try {
+        await UserService.updateUserStatus(userId.toString(), "online");
+      } catch (statusError) {
+        log("Error updating user status to online when leaving room", statusError.message);
+      }
+    }
+
     // 1️⃣ Thông báo cho user vừa rời phòng
     socket.emit("leave_success", { 
-      message: "Bạn đã rời phòng",
+      message: roomBefore.status === "playing" ? "Bạn đã rời phòng (tự động thua)" : "Bạn đã rời phòng",
       timestamp: new Date().toISOString()
     });
 
@@ -272,15 +518,16 @@ async function handleLeaveRoom(io, socket, data) {
       io.to(roomIdStr).emit("player_left", { 
         userId, 
         username,
+        nickname,
         room: roomAfter,
-        message: `${username} đã rời phòng`,
+        message: `${nickname} đã rời phòng`,
         timestamp: new Date().toISOString() 
       });
 
       // 3️⃣ Cập nhật trạng thái phòng cho tất cả user còn lại
       io.to(roomIdStr).emit("room_update", {
         room: roomAfter,
-        message: `${username} đã rời phòng`,
+        message: `${nickname} đã rời phòng`,
         timestamp: new Date().toISOString()
       });
     } else {
@@ -310,6 +557,7 @@ async function handleDisconnect(io, socket) {
 
   const userId = socket.user?._id;
   const username = socket.user?.username || "Unknown";
+  const nickname = socket.user?.nickname || socket.user?.username || "Unknown";
 
   try {
     const room = await RoomService.getRoomById(roomIdStr);
@@ -357,14 +605,15 @@ async function handleDisconnect(io, socket) {
       io.to(roomIdStr).emit("player_disconnected", { 
         userId, 
         username,
+        nickname,
         room: roomAfterDisconnect,
-        message: `${username} đã ngắt kết nối (đang chờ kết nối lại...)`,
+        message: `${nickname} đã ngắt kết nối (đang chờ kết nối lại...)`,
         timestamp: new Date().toISOString() 
       });
 
       io.to(roomIdStr).emit("room_update", {
         room: roomAfterDisconnect,
-        message: `${username} đã ngắt kết nối`,
+        message: `${nickname} đã ngắt kết nối`,
         timestamp: new Date().toISOString()
       });
     }
@@ -392,6 +641,7 @@ async function handleDisconnect(io, socket) {
         
         // Chỉ xóa nếu player vẫn còn disconnected
         if (playerCheck) {
+          const playerNickname = playerCheck?.nickname || playerCheck?.username || nickname;
           const roomAfter = await RoomService.removeDisconnectedPlayer({ 
             roomId: roomIdStr, 
             userId 
@@ -401,14 +651,15 @@ async function handleDisconnect(io, socket) {
             io.to(roomIdStr).emit("player_left", { 
               userId, 
               username,
+              nickname: playerNickname,
               room: roomAfter,
-              message: `${username} đã rời phòng (hết thời gian chờ)`,
+              message: `${playerNickname} đã rời phòng (hết thời gian chờ)`,
               timestamp: new Date().toISOString() 
             });
 
             io.to(roomIdStr).emit("room_update", {
               room: roomAfter,
-              message: `${username} đã rời phòng`,
+              message: `${playerNickname} đã rời phòng`,
               timestamp: new Date().toISOString()
             });
           } else {
@@ -502,15 +753,20 @@ async function autoRemovePlayerOnTimeout(io, roomIdStr, userId, username) {
 
     // Tìm người chơi còn lại (người thắng)
     const winner = room.players.find(p => p.userId.toString() !== userId.toString());
+    const winnerNickname = winner?.nickname || winner?.username || "Đối thủ";
+    const playerNickname = player?.nickname || player?.username || username;
+    const nickname = playerNickname;
     
     // Nếu đang chơi, kết thúc game trước
     if (room.status === "playing") {
       const gameResult = {
         winner: winner?.userId || null,
         winnerUsername: winner?.username || "Đối thủ",
+        winnerNickname: winnerNickname,
         loser: userId,
         loserUsername: username,
-        message: `${username} đã mất kết nối quá lâu và bị đẩy ra khỏi phòng. ${winner?.username || "Đối thủ"} thắng!`,
+        loserNickname: nickname,
+        message: `${nickname} đã mất kết nối quá lâu và bị đẩy ra khỏi phòng. ${winnerNickname} thắng!`,
         isTimeout: true
       };
 
@@ -536,7 +792,7 @@ async function autoRemovePlayerOnTimeout(io, roomIdStr, userId, username) {
       io.to(roomIdStr).emit("game_end", {
         result: gameResult,
         board: game?.board || null,
-        message: `${username} đã mất kết nối quá lâu`,
+        message: `${playerNickname} đã mất kết nối quá lâu`,
         timestamp: new Date().toISOString()
       });
     }
@@ -552,14 +808,15 @@ async function autoRemovePlayerOnTimeout(io, roomIdStr, userId, username) {
       io.to(roomIdStr).emit("player_left", { 
         userId, 
         username,
+        nickname: playerNickname,
         room: roomAfter,
-        message: `${username} đã bị đẩy ra khỏi phòng do mất kết nối quá lâu`,
+        message: `${playerNickname} đã bị đẩy ra khỏi phòng do mất kết nối quá lâu`,
         timestamp: new Date().toISOString() 
       });
 
       io.to(roomIdStr).emit("room_update", {
         room: roomAfter,
-        message: `${username} đã bị đẩy ra khỏi phòng`,
+        message: `${playerNickname} đã bị đẩy ra khỏi phòng`,
         timestamp: new Date().toISOString()
       });
     } else {
@@ -666,6 +923,7 @@ function cleanupAllPingTracking(roomIdStr) {
 async function handleCheckAndReconnect(io, socket) {
   const userId = socket.user?._id;
   const username = socket.user?.username || "Unknown";
+  const nickname = socket.user?.nickname || socket.user?.username || "Unknown";
 
   try {
     // Tìm phòng mà user đang tham gia
@@ -748,14 +1006,15 @@ async function handleCheckAndReconnect(io, socket) {
       socket.to(roomIdStr).emit("player_reconnected", {
         userId,
         username,
+        nickname,
         room: roomAfter,
-        message: `${username} đã kết nối lại`,
+        message: `${nickname} đã kết nối lại`,
         timestamp: new Date().toISOString()
       });
 
       io.to(roomIdStr).emit("room_update", {
         room: roomAfter,
-        message: `${username} đã kết nối lại`,
+        message: `${nickname} đã kết nối lại`,
         timestamp: new Date().toISOString()
       });
 
@@ -865,7 +1124,7 @@ async function handleInviteToRoom(io, socket, data) {
 }
 
 /** ----------------- EXPORT MODULE ----------------- */
-module.exports = function roomSocket(io, socket) {
+function roomSocket(io, socket) {
   socket.on("join_room", (data) => handleJoinRoom(io, socket, data));
   socket.on("player_ready", (data) => handlePlayerReady(io, socket, data));
   socket.on("start_game", (data) => handleStartGame(io, socket, data));
@@ -874,6 +1133,10 @@ module.exports = function roomSocket(io, socket) {
   socket.on("check_reconnect", () => handleCheckAndReconnect(io, socket));
   socket.on("ping_room", (data) => handlePingRoom(io, socket, data));
   socket.on("ping_server", () => socket.emit("pong", { message: "Pong from server!" }));
+  socket.on("update_room_settings", (data) => handleUpdateRoomSettings(io, socket, data));
   socket.on("disconnect", () => handleDisconnect(io, socket));
-};
+}
+
+module.exports = roomSocket;
+module.exports.cleanupAllPingTracking = cleanupAllPingTracking;
 

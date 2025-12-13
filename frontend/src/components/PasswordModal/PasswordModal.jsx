@@ -1,20 +1,78 @@
 import React, { useState } from 'react';
+import { roomApi } from '../../services/api/roomApi';
 
-const PasswordModal = ({ isOpen, onClose, onSubmit, roomName }) => {
+const PasswordModal = ({ isOpen, onClose, onSubmit, roomName, roomId }) => {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
+  const [isVerifying, setIsVerifying] = useState(false);
+
+  // Ghi log props khi component render để debug
+  React.useEffect(() => {
+    if (isOpen) {
+      console.log('PasswordModal đã được mount/re-render:', { 
+        isOpen, 
+        roomId, 
+        roomName,
+        hasOnSubmit: !!onSubmit 
+      });
+    }
+  }, [isOpen, roomId, roomName, onSubmit]);
 
   if (!isOpen) return null;
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!password.trim()) {
+    console.log('PasswordModal handleSubmit được gọi', { 
+      roomId, 
+      passwordLength: password?.length, 
+      hasPassword: !!password,
+      props: { roomId, roomName, hasOnSubmit: !!onSubmit }
+    });
+    
+    if (!password || !password.trim()) {
       setError('Vui lòng nhập mật khẩu');
       return;
     }
-    onSubmit(password);
-    setPassword('');
+
+    // Nếu không có roomId và không có onSubmit, không thể xử lý
+    // Nhưng nếu có onSubmit, có thể xử lý được (onSubmit sẽ tự xử lý roomId)
+    if (!roomId && !onSubmit) {
+      console.error('Không có roomId và không có onSubmit trong PasswordModal - không thể tiếp tục');
+      setError('Lỗi: Không có thông tin phòng. Vui lòng thử lại.');
+      // Đóng modal sau 2 giây nếu không có roomId
+      setTimeout(() => {
+        onClose();
+      }, 2000);
+      return;
+    }
+    
+    // Nếu có onSubmit nhưng không có roomId, vẫn cho phép gọi onSubmit
+    // (onSubmit có thể tự xử lý, ví dụ như navigate với password trong state)
+    if (!roomId && onSubmit) {
+      console.log('Không có roomId nhưng có onSubmit - vẫn gọi onSubmit');
+    }
+
+    setIsVerifying(true);
     setError('');
+
+    try {
+      // Gọi onSubmit - nó sẽ verify password và join socket
+      console.log('Đang gọi onSubmit với mật khẩu:', password?.substring(0, 2) + '***');
+      await onSubmit(password.trim());
+      // Nếu thành công, reset form (modal sẽ được đóng bởi parent component)
+      setPassword('');
+      setError('');
+      console.log('PasswordModal submit thành công');
+    } catch (err) {
+      // Nếu có lỗi, hiển thị lỗi
+      console.error('Lỗi khi PasswordModal submit:', err);
+      const errorMessage = err.message || err.response?.data?.message || 'Mật khẩu không đúng';
+      setError(errorMessage);
+      // Không đóng modal nếu password sai, để user có thể nhập lại
+      // Nếu lỗi là về room info, modal sẽ được đóng bởi parent
+    } finally {
+      setIsVerifying(false);
+    }
   };
 
   const handleCancel = () => {
@@ -63,9 +121,10 @@ const PasswordModal = ({ isOpen, onClose, onSubmit, roomName }) => {
             </button>
             <button
               type="submit"
-              className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+              disabled={isVerifying}
+              className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              Tham gia
+              {isVerifying ? 'Đang kiểm tra...' : 'Tham gia'}
             </button>
           </div>
         </form>

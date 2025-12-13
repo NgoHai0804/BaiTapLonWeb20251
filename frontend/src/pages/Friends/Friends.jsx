@@ -25,7 +25,7 @@ const Friends = () => {
       const data = response?.data || response || [];
       setFriends(Array.isArray(data) ? data : []);
     } catch (error) {
-      console.error('Load friends error:', error);
+      console.error('Lỗi khi tải danh sách bạn bè:', error);
       setFriends([]);
       // Chỉ hiển thị toast nếu không phải lỗi 404 hoặc empty
       if (error.response?.status !== 404) {
@@ -42,7 +42,7 @@ const Friends = () => {
       const data = response?.data || response || [];
       setRequests(Array.isArray(data) ? data : []);
     } catch (error) {
-      console.error('Load requests error:', error);
+      console.error('Lỗi khi tải danh sách lời mời:', error);
       setRequests([]);
     }
   };
@@ -67,7 +67,7 @@ const Friends = () => {
         toast.info('Không tìm thấy người dùng nào');
       }
     } catch (error) {
-      console.error('Search error:', error);
+      console.error('Lỗi khi tìm kiếm:', error);
       setSearchResults([]);
       toast.error(error.response?.data?.message || 'Không thể tìm kiếm');
     } finally {
@@ -212,14 +212,14 @@ const Friends = () => {
                 Bạn chưa có bạn bè nào. Hãy tìm kiếm và gửi lời mời kết bạn!
               </div>
             ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              <div className="space-y-3">
                 {friends.map((friend) => (
                   <div
                     key={friend._id}
-                    className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow"
+                    className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow flex items-center justify-between gap-4"
                   >
-                    <div className="flex items-center gap-3 mb-3">
-                      <div className="w-12 h-12 rounded-full bg-gray-200 flex items-center justify-center overflow-hidden">
+                    <div className="flex items-center gap-3 flex-1">
+                      <div className="w-12 h-12 rounded-full bg-gray-200 flex items-center justify-center overflow-hidden flex-shrink-0">
                         {friend.avatarUrl ? (
                           <img src={friend.avatarUrl} alt="Avatar" className="w-full h-full object-cover" />
                         ) : (
@@ -228,35 +228,37 @@ const Friends = () => {
                           </span>
                         )}
                       </div>
-                      <div className="flex-1">
-                        <div className="font-semibold">{friend.nickname || friend.username}</div>
-                        <div className="text-sm text-gray-500">@{friend.username}</div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2">
+                          <div className="font-semibold truncate">{friend.nickname || friend.username}</div>
+                          {getStatusBadge(friend.status)}
+                        </div>
+                        <div className="text-sm text-gray-500 truncate">@{friend.username}</div>
                       </div>
-                      {getStatusBadge(friend.status)}
                     </div>
-                    <div className="flex gap-2 flex-wrap">
+                    <div className="flex gap-2 flex-shrink-0">
                       <button
                         onClick={() => navigate(`/profile/${friend._id}`)}
-                        className="px-3 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors text-sm"
+                        className="flex-1 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors text-sm whitespace-nowrap"
                         title="Xem profile"
                       >
                         Profile
                       </button>
                       <button
                         onClick={() => navigate(`/chat/${friend._id}`)}
-                        className="flex-1 px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm"
+                        className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm whitespace-nowrap"
                       >
                         Nhắn tin
                       </button>
                       <button
                         onClick={() => handleInviteToRoom(friend._id)}
-                        className="flex-1 px-3 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-sm"
+                        className="flex-1 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-sm whitespace-nowrap"
                       >
                         Mời chơi
                       </button>
                       <button
                         onClick={() => handleRemoveFriend(friend._id)}
-                        className="px-3 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors text-sm"
+                        className="flex-1 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors text-sm whitespace-nowrap"
                       >
                         Hủy kết bạn
                       </button>
@@ -275,14 +277,14 @@ const Friends = () => {
                 Không có lời mời kết bạn nào
               </div>
             ) : (
-              <div className="space-y-4">
+              <div className="space-y-3">
                 {requests.map((request) => (
                   <div
                     key={request._id}
-                    className="border border-gray-200 rounded-lg p-4 flex items-center justify-between"
+                    className="border border-gray-200 rounded-lg p-4 flex items-center justify-between gap-4"
                   >
-                    <div className="flex items-center gap-3">
-                      <div className="w-12 h-12 rounded-full bg-gray-200 flex items-center justify-center overflow-hidden">
+                    <div className="flex items-center gap-3 flex-1">
+                      <div className="w-12 h-12 rounded-full bg-gray-200 flex items-center justify-center overflow-hidden flex-shrink-0">
                         {request.requester?.avatarUrl ? (
                           <img src={request.requester.avatarUrl} alt="Avatar" className="w-full h-full object-cover" />
                         ) : (
@@ -291,28 +293,31 @@ const Friends = () => {
                           </span>
                         )}
                       </div>
-                      <div>
-                        <div className="font-semibold">{request.requester?.nickname || request.requester?.username}</div>
-                        <div className="text-sm text-gray-500">@{request.requester?.username}</div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2">
+                          <div className="font-semibold truncate">{request.requester?.nickname || request.requester?.username}</div>
+                          {request.requester?.status && getStatusBadge(request.requester.status)}
+                        </div>
+                        <div className="text-sm text-gray-500 truncate">@{request.requester?.username}</div>
                       </div>
                     </div>
-                    <div className="flex gap-2">
+                    <div className="flex gap-2 flex-shrink-0">
                       <button
                         onClick={() => navigate(`/profile/${request.requester._id}`)}
-                        className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors"
+                        className="flex-1 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors text-sm whitespace-nowrap"
                         title="Xem profile"
                       >
                         Profile
                       </button>
                       <button
                         onClick={() => handleAcceptRequest(request.requester._id)}
-                        className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
+                        className="flex-1 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-sm whitespace-nowrap"
                       >
                         Chấp nhận
                       </button>
                       <button
                         onClick={() => handleCancelRequest(request.requester._id)}
-                        className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
+                        className="flex-1 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors text-sm whitespace-nowrap"
                       >
                         Từ chối
                       </button>
@@ -331,14 +336,14 @@ const Friends = () => {
                 Không tìm thấy người dùng nào
               </div>
             ) : (
-              <div className="space-y-4">
+              <div className="space-y-3">
                 {searchResults.map((user) => (
                   <div
                     key={user._id}
-                    className="border border-gray-200 rounded-lg p-4 flex items-center justify-between"
+                    className="border border-gray-200 rounded-lg p-4 flex items-center justify-between gap-4"
                   >
-                    <div className="flex items-center gap-3">
-                      <div className="w-12 h-12 rounded-full bg-gray-200 flex items-center justify-center overflow-hidden">
+                    <div className="flex items-center gap-3 flex-1">
+                      <div className="w-12 h-12 rounded-full bg-gray-200 flex items-center justify-center overflow-hidden flex-shrink-0">
                         {user.avatarUrl ? (
                           <img src={user.avatarUrl} alt="Avatar" className="w-full h-full object-cover" />
                         ) : (
@@ -347,9 +352,12 @@ const Friends = () => {
                           </span>
                         )}
                       </div>
-                      <div>
-                        <div className="font-semibold">{user.nickname || user.username}</div>
-                        <div className="text-sm text-gray-500">@{user.username}</div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2">
+                          <div className="font-semibold truncate">{user.nickname || user.username}</div>
+                          {user.status && getStatusBadge(user.status)}
+                        </div>
+                        <div className="text-sm text-gray-500 truncate">@{user.username}</div>
                         {user.friendStatus && (
                           <div className="text-xs text-gray-400 mt-1">
                             {user.friendStatus === 'accepted' && 'Đã là bạn bè'}
@@ -359,22 +367,22 @@ const Friends = () => {
                         )}
                       </div>
                     </div>
-                    <div className="flex gap-2 items-center">
+                    <div className="flex gap-2 flex-shrink-0">
                       <button
                         onClick={() => navigate(`/profile/${user._id}`)}
-                        className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors"
+                        className="flex-1 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors text-sm whitespace-nowrap"
                         title="Xem profile"
                       >
                         Profile
                       </button>
                       {user.friendStatus === 'accepted' ? (
-                        <span className="px-4 py-2 text-gray-600">Đã là bạn bè</span>
+                        <span className="flex-1 px-4 py-2 text-gray-600 text-sm text-center whitespace-nowrap">Đã là bạn bè</span>
                       ) : user.friendStatus === 'pending' ? (
-                        <span className="px-4 py-2 text-yellow-600">Đã gửi lời mời</span>
+                        <span className="flex-1 px-4 py-2 text-yellow-600 text-sm text-center whitespace-nowrap">Đã gửi lời mời</span>
                       ) : (
                         <button
                           onClick={() => handleSendRequest(user._id)}
-                          className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                          className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm whitespace-nowrap"
                         >
                           Kết bạn
                         </button>

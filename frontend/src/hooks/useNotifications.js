@@ -32,7 +32,7 @@ export const useNotifications = () => {
           dispatch(addNotification({
             type: 'message',
             title: 'Tin nhắn mới',
-            message: `${sender.username || sender.nickname || 'Người dùng'}: ${messageData.message}`,
+            message: `${sender.nickname || sender.username || 'Người dùng'}: ${messageData.message}`,
             data: {
               senderId: senderId?.toString(),
               senderUsername: sender.username,
@@ -48,19 +48,19 @@ export const useNotifications = () => {
           }
 
           // Hiển thị toast
-          toast.info(`Tin nhắn mới từ ${sender.username || sender.nickname || 'Người dùng'}`);
+          toast.info(`Tin nhắn mới từ ${sender.nickname || sender.username || 'Người dùng'}`);
         }
       }
     };
 
     // Lắng nghe lời mời kết bạn mới
     const handleFriendRequest = (requestData) => {
-      console.log('🔔 Friend request notification received:', requestData);
+      console.log('Đã nhận thông báo lời mời kết bạn:', requestData);
       const requester = requestData.requester || {};
       dispatch(addNotification({
         type: 'friend_request',
         title: 'Lời mời kết bạn',
-        message: `${requester.username || requester.nickname || 'Người dùng'} muốn kết bạn với bạn`,
+        message: `${requester.nickname || requester.username || 'Người dùng'} muốn kết bạn với bạn`,
         data: {
           requesterId: requestData.requester?._id || requestData.requester,
           requestId: requestData._id,
@@ -73,17 +73,17 @@ export const useNotifications = () => {
         playSound('message');
       }
 
-      toast.info(`Bạn có lời mời kết bạn mới từ ${requester.username || requester.nickname || 'Người dùng'}`);
+      toast.info(`Bạn có lời mời kết bạn mới từ ${requester.nickname || requester.username || 'Người dùng'}`);
     };
 
     // Lắng nghe lời mời vào phòng
     const handleRoomInvite = (inviteData) => {
-      console.log('🔔 Room invite notification received:', inviteData);
+      console.log('Đã nhận thông báo lời mời vào phòng:', inviteData);
       const inviter = inviteData.inviter || {};
       dispatch(addNotification({
         type: 'room_invite',
         title: 'Lời mời vào phòng',
-        message: `${inviter.username || inviter.nickname || 'Người dùng'} mời bạn vào phòng "${inviteData.roomName || 'Phòng chơi'}"`,
+        message: `${inviter.nickname || inviter.username || 'Người dùng'} mời bạn vào phòng "${inviteData.roomName || 'Phòng chơi'}"`,
         data: {
           roomId: inviteData.roomId,
           inviterId: inviteData.inviterId,
@@ -97,7 +97,7 @@ export const useNotifications = () => {
         playSound('message');
       }
 
-      toast.info(`${inviter.username || inviter.nickname || 'Người dùng'} mời bạn vào phòng`);
+      toast.info(`${inviter.nickname || inviter.username || 'Người dùng'} mời bạn vào phòng`);
     };
 
     // Đăng ký listeners

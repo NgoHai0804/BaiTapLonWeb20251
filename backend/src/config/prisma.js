@@ -5,11 +5,11 @@ const { PrismaClient } = require('@prisma/client');
 // Giúp tránh tạo quá nhiều kết nối trong development
 const globalForPrisma = global;
 
-// Kiểm tra DATABASE_URL
+// Kiểm tra DATABASE_URL có được cấu hình chưa
 if (!process.env.DATABASE_URL) {
-  console.error('❌ DATABASE_URL is not defined in environment variables');
-  console.error('Please set DATABASE_URL in your .env file');
-  console.error('Example: DATABASE_URL=mongodb://localhost:27017/caro-online');
+  console.error('DATABASE_URL chưa được định nghĩa trong biến môi trường');
+  console.error('Vui lòng thiết lập DATABASE_URL trong file .env');
+  console.error('Ví dụ: DATABASE_URL=mongodb://localhost:27017/caro-online');
   process.exit(1);
 }
 
@@ -32,18 +32,18 @@ const connectWithRetry = async (retries = 5, delay = 1000) => {
     try {
       await prisma.$connect();
       isConnected = true;
-      console.log('✅ Connected to MongoDB via Prisma');
+      console.log('Đã kết nối đến MongoDB qua Prisma');
       return;
     } catch (error) {
-      console.error(`❌ Prisma connection attempt ${i + 1}/${retries} failed:`, error.message);
+      console.error(`Lần thử kết nối Prisma thứ ${i + 1}/${retries} thất bại:`, error.message);
       if (i < retries - 1) {
-        console.log(`⏳ Retrying in ${delay}ms...`);
+        console.log(`Đang thử lại sau ${delay}ms...`);
         await new Promise(resolve => setTimeout(resolve, delay));
       } else {
-        console.error('❌ Failed to connect to MongoDB after', retries, 'attempts');
-        console.error('Please check your DATABASE_URL:', process.env.DATABASE_URL ? '✓ Set' : '✗ Not set');
+        console.error('Không thể kết nối đến MongoDB sau', retries, 'lần thử');
+        console.error('Vui lòng kiểm tra DATABASE_URL:', process.env.DATABASE_URL ? 'Đã thiết lập' : 'Chưa thiết lập');
         if (error.message.includes('ENOTFOUND') || error.message.includes('ECONNREFUSED')) {
-          console.error('💡 Tip: Make sure MongoDB is running and accessible');
+          console.error('Gợi ý: Đảm bảo MongoDB đang chạy và có thể truy cập được');
         }
       }
     }
@@ -53,11 +53,11 @@ const connectWithRetry = async (retries = 5, delay = 1000) => {
 // Start connection
 connectWithRetry();
 
-// Graceful shutdown
+// Ngắt kết nối database khi server tắt
 process.on('beforeExit', async () => {
   if (isConnected) {
     await prisma.$disconnect();
-    console.log('👋 Disconnected from MongoDB');
+    console.log('Đã ngắt kết nối khỏi MongoDB');
   }
 });
 

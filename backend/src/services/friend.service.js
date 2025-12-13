@@ -258,6 +258,36 @@ async function getRelationshipStatus(userAId, userBId) {
   }
 }
 
+// 7b️ Lấy thông tin chi tiết về quan hệ giữa 2 người (bao gồm ai là requester)
+async function getRelationshipDetail(userAId, userBId) {
+  try {
+    const rel = await Friend.findOne({
+      $or: [
+        { requester: userAId, addressee: userBId },
+        { requester: userBId, addressee: userAId },
+      ],
+    });
+    
+    if (!rel) {
+      return { status: "none", isRequester: false, isAddressee: false };
+    }
+    
+    const isRequester = rel.requester.toString() === userAId.toString();
+    const isAddressee = rel.addressee.toString() === userAId.toString();
+    
+    return {
+      status: rel.status,
+      isRequester,
+      isAddressee,
+      requesterId: rel.requester,
+      addresseeId: rel.addressee,
+    };
+  } catch (err) {
+    logger.error("getRelationshipDetail error: %o", err);
+    throw err;
+  }
+}
+
 // 8 Tìm người dùng theo nickname HOẶC userID (loại trừ bản thân) - Ưu tiên userID
 async function searchUsers(nickname, userID, excludeUserId) {
   try {
@@ -309,10 +339,12 @@ async function searchUsers(nickname, userID, excludeUserId) {
     if (users.length > 0) {
       usersWithFriendStatus = await Promise.all(
         users.map(async (user) => {
-          const friendStatus = await getRelationshipStatus(excludeUserId, user._id);
+          const relationshipDetail = await getRelationshipDetail(excludeUserId, user._id);
           return {
             ...user.toObject(),
-            friendStatus,
+            friendStatus: relationshipDetail.status,
+            isRequester: relationshipDetail.isRequester,
+            isAddressee: relationshipDetail.isAddressee,
           };
         })
       );
@@ -339,6 +371,7 @@ module.exports = {
   getFriendsList,
   getPendingRequests,
   getRelationshipStatus,
+  getRelationshipDetail,
   searchUsers,
   setSocketInstance,
 };

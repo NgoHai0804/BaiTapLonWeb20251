@@ -87,6 +87,7 @@ const RoomCard = ({ room }) => {
         onClose={handlePasswordCancel}
         onSubmit={handlePasswordSubmit}
         roomName={room.name}
+        roomId={room._id}
       />
     </div>
   );

@@ -128,9 +128,49 @@ const updateGameStats = async (userId, gameId = "caro", isWin, isDraw = false) =
   }
 };
 
+// Cập nhật trạng thái user (online/offline/in_game)
+const updateUserStatus = async (userId, status) => {
+  try {
+    if (!userId || !status) {
+      logger.warn(`Invalid params for updateUserStatus: userId=${userId}, status=${status}`);
+      return;
+    }
+
+    const validStatuses = ["offline", "online", "in_game", "banned"];
+    if (!validStatuses.includes(status)) {
+      logger.warn(`Invalid status: ${status}`);
+      return;
+    }
+
+    const updateData = { status: status };
+    // Chỉ cập nhật lastOnline nếu user đang online hoặc in_game
+    if (status === "online" || status === "in_game") {
+      updateData.lastOnline = new Date();
+    }
+
+    const user = await User.findByIdAndUpdate(
+      userId,
+      updateData,
+      { new: true }
+    ).select("-passwordHash");
+
+    if (!user) {
+      logger.warn(`User not found for status update: ${userId}`);
+      return;
+    }
+
+    logger.info(`Updated user status: ${userId} -> ${status}`);
+    return user;
+  } catch (err) {
+    logger.error("updateUserStatus error: %o", err);
+    // Không throw để không làm gián đoạn flow chính
+  }
+};
+
 module.exports = {
   getUserProfile,
   updateUserProfile,
   getLeaderboard,
   updateGameStats,
+  updateUserStatus,
 };

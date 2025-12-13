@@ -11,7 +11,7 @@ const CreateRoom = () => {
   const [formData, setFormData] = useState({
     name: '',
     password: '',
-    maxPlayers: 2,
+    turnTimeLimit: 30, // Thời gian mỗi lượt đi (giây)
   });
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState({});
@@ -20,7 +20,7 @@ const CreateRoom = () => {
     const { name, value } = e.target;
     setFormData((prev) => ({
       ...prev,
-      [name]: name === 'maxPlayers' ? parseInt(value) : value,
+      [name]: name === 'turnTimeLimit' ? parseInt(value) : value,
     }));
     if (errors[name]) {
       setErrors((prev) => ({
@@ -35,8 +35,8 @@ const CreateRoom = () => {
     if (!formData.name.trim()) {
       newErrors.name = 'Vui lòng nhập tên phòng';
     }
-    if (formData.maxPlayers < 2 || formData.maxPlayers > 4) {
-      newErrors.maxPlayers = 'Số người chơi phải từ 2 đến 4';
+    if (formData.turnTimeLimit < 10 || formData.turnTimeLimit > 300) {
+      newErrors.turnTimeLimit = 'Thời gian mỗi lượt phải từ 10 đến 300 giây';
     }
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
@@ -48,7 +48,11 @@ const CreateRoom = () => {
 
     setLoading(true);
     try {
-      const response = await roomApi.createRoom(formData);
+      // Luôn gửi maxPlayers = 2
+      const response = await roomApi.createRoom({
+        ...formData,
+        maxPlayers: 2
+      });
       const room = response.room || response.data || response;
       const roomId = room._id || room.id;
       
@@ -73,7 +77,7 @@ const CreateRoom = () => {
     } catch (error) {
       const errorMessage = error.response?.data?.message || error.message || 'Không thể tạo phòng';
       toast.error(errorMessage);
-      console.error('Create room error:', error);
+      console.error('Lỗi khi tạo phòng:', error);
     } finally {
       setLoading(false);
     }
@@ -123,28 +127,31 @@ const CreateRoom = () => {
               />
             </div>
 
-            {/* Max Players */}
+            {/* Turn Time Limit */}
             <div>
-              <label htmlFor="maxPlayers" className="block text-sm font-medium text-gray-700 mb-2">
-                Số người chơi tối đa
+              <label htmlFor="turnTimeLimit" className="block text-sm font-medium text-gray-700 mb-2">
+                Thời gian mỗi lượt đi (giây)
               </label>
-              <select
-                id="maxPlayers"
-                name="maxPlayers"
-                value={formData.maxPlayers}
+              <input
+                type="number"
+                id="turnTimeLimit"
+                name="turnTimeLimit"
+                min="10"
+                max="300"
+                value={formData.turnTimeLimit}
                 onChange={handleChange}
                 className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 ${
-                  errors.maxPlayers
+                  errors.turnTimeLimit
                     ? 'border-red-500 focus:ring-red-500'
                     : 'border-gray-300 focus:ring-blue-500'
                 }`}
-              >
-                <option value={2}>2 người</option>
-                <option value={3}>3 người</option>
-                <option value={4}>4 người</option>
-              </select>
-              {errors.maxPlayers && (
-                <p className="mt-1 text-sm text-red-600">{errors.maxPlayers}</p>
+                placeholder="30"
+              />
+              <p className="mt-1 text-sm text-gray-500">
+                Thời gian tối thiểu: 10s, tối đa: 300s. Nếu hết thời gian sẽ tự động thua.
+              </p>
+              {errors.turnTimeLimit && (
+                <p className="mt-1 text-sm text-red-600">{errors.turnTimeLimit}</p>
               )}
             </div>
 

@@ -11,5 +11,7 @@ router.post("/update", verifyToken, roomController.updateRoom);
 router.post("/toggle-ready", verifyToken, roomController.toggleReady);
 router.post("/end", verifyToken, roomController.endGame);
 router.get("/list", verifyToken, roomController.getRoomList);
+router.get("/check-user-room", verifyToken, roomController.checkUserRoom);
+router.post("/verify-password", verifyToken, roomController.verifyPassword);
 
 module.exports = router;

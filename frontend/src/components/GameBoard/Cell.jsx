@@ -1,13 +1,15 @@
 import React from 'react';
 
+// Component hiển thị một ô cờ trên bàn chơi
 const Cell = ({ value, x, y, isHovered, onClick, onMouseEnter, onMouseLeave, disabled, isLastMove = false }) => {
+  // Render nội dung ô cờ (X hoặc O)
   const getCellContent = () => {
     if (value === 'X') {
       return (
         <span 
           className="text-blue-600 font-bold leading-none block"
           style={{ 
-            fontSize: '85%', 
+            fontSize: '120%', 
             lineHeight: '1',
             display: 'flex',
             alignItems: 'center',
@@ -25,7 +27,7 @@ const Cell = ({ value, x, y, isHovered, onClick, onMouseEnter, onMouseLeave, dis
         <span 
           className="text-red-600 font-bold leading-none block"
           style={{ 
-            fontSize: '85%', 
+            fontSize: '250%', 
             lineHeight: '1',
             display: 'flex',
             alignItems: 'center',
@@ -59,6 +61,7 @@ const Cell = ({ value, x, y, isHovered, onClick, onMouseEnter, onMouseLeave, dis
       disabled={disabled || !!value}
       style={{ minHeight: 0, minWidth: 0 }}
     >
+      {/* Hiển thị nội dung ô cờ (X hoặc O) */}
       {getCellContent()}
     </button>
   );

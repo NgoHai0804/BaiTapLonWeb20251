@@ -6,11 +6,12 @@ const logger = require("../utils/logger");
 // Tạo phòng
 async function createRoom(req, res) {
   try {
-    const { name, password, maxPlayers } = req.body;
+    const { name, password, turnTimeLimit } = req.body;
     const room = await RoomService.createRoom({
       name,
       password,
-      maxPlayers,
+      maxPlayers: 2, // Luôn là 2 người
+      turnTimeLimit,
       hostId: req.user._id,
       hostUsername: req.user.username || req.user.nickname,
     });
@@ -121,6 +122,44 @@ async function getRoomList(req, res) {
   }
 }
 
+// Kiểm tra xem user có đang trong phòng nào không
+async function checkUserRoom(req, res) {
+  try {
+    const userId = req.user._id;
+    const room = await RoomService.findRoomByUserId(userId);
+    
+    if (!room) {
+      return response.success(res, { inRoom: false, room: null }, "User không đang ở trong phòng nào");
+    }
+    
+    return response.success(res, { inRoom: true, room }, "User đang ở trong phòng");
+  } catch (err) {
+    logger.error("checkUserRoom error: %o", err);
+    return response.error(res, err.message, 400);
+  }
+}
+
+// Xác minh mật khẩu phòng (không join vào phòng)
+async function verifyPassword(req, res) {
+  try {
+    const { roomId, password } = req.body;
+    const userId = req.user._id;
+    logger.info("verifyPassword request:", { roomId, hasPassword: !!password, passwordLength: password?.length, userId });
+    
+    if (!roomId) {
+      logger.warn("verifyPassword: roomId is missing");
+      return response.error(res, "Thiếu roomId", 400);
+    }
+    
+    const result = await RoomService.verifyPassword({ roomId, password, userId });
+    logger.info("verifyPassword success:", { roomId });
+    return response.success(res, result, "Mật khẩu đúng");
+  } catch (err) {
+    logger.warn("verifyPassword failed: %o", err.message);
+    return response.error(res, err.message, 400);
+  }
+}
+
 // Export tất cả hàm
 module.exports = {
   createRoom,
@@ -130,4 +169,6 @@ module.exports = {
   toggleReady,
   endGame,
   getRoomList,
+  checkUserRoom,
+  verifyPassword,
 };

@@ -37,10 +37,10 @@ const PrivateChat = () => {
     try {
       setLoading(true);
       
-      // Load từ API trước để có thông tin friend và messages
+      // Tải từ API trước để có thông tin bạn bè và tin nhắn
       try {
         const data = await chatApi.getPrivateChat(friendId);
-        console.log('Chat API response:', data);
+        console.log('Phản hồi từ Chat API:', data);
         
         if (data) {
           if (data.messages && Array.isArray(data.messages)) {
@@ -51,15 +51,15 @@ const PrivateChat = () => {
           }
         }
       } catch (apiError) {
-        console.error('API error:', apiError);
+        console.error('Lỗi API:', apiError);
         // Nếu API lỗi, vẫn tiếp tục với socket
       }
       
-      // Cũng load từ socket để có realtime updates
+      // Cũng tải từ socket để có cập nhật realtime
       socketClient.emit(SOCKET_EVENTS.GET_PRIVATE_MESSAGES, { userId: friendId, limit: 50 });
     } catch (error) {
       toast.error('Không thể tải lịch sử chat');
-      console.error('Load chat history error:', error);
+      console.error('Lỗi khi tải lịch sử chat:', error);
     } finally {
       setLoading(false);
     }
@@ -81,11 +81,13 @@ const PrivateChat = () => {
       }
     };
 
+    // Xử lý khi nhận được tin nhắn riêng từ socket
     const handlePrivateMessages = (data) => {
-      console.log('Private messages received:', data);
+      console.log('Đã nhận tin nhắn riêng:', data);
       const friendIdStr = friendId?.toString();
       const dataUserId = data.userId?.toString();
       
+      // Chỉ cập nhật nếu tin nhắn từ đúng người bạn
       if (dataUserId === friendIdStr) {
         if (data.messages && Array.isArray(data.messages)) {
           setMessages(data.messages);
@@ -197,7 +199,7 @@ const PrivateChat = () => {
                 >
                   {!myMessage && (
                     <div className="text-xs font-semibold mb-1 opacity-75">
-                      {msg.sender?.username || 'Người dùng'}
+                      {msg.sender?.nickname || msg.sender?.username || 'Người dùng'}
                     </div>
                   )}
                   <div className="text-sm break-words">{msg.message}</div>

@@ -1,27 +1,4 @@
-import axios from 'axios';
-
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
-
-const api = axios.create({
-  baseURL: API_URL,
-  headers: {
-    'Content-Type': 'application/json',
-  },
-});
-
-// Add token to requests
-api.interceptors.request.use((config) => {
-  let token = localStorage.getItem('auth_token');
-  
-  if (token) {
-    // Loại bỏ dấu ngoặc kép nếu có
-    token = token.replace(/^"(.*)"$/, '$1');
-    // Loại bỏ khoảng trắng thừa
-    token = token.trim();
-    config.headers.Authorization = `Bearer ${token}`;
-  }
-  return config;
-});
+import apiClient from './apiClient';
 
 const API_ENDPOINTS = {
   LIST: '/api/rooms/list',
@@ -29,17 +6,19 @@ const API_ENDPOINTS = {
   JOIN: '/api/rooms/join',
   LEAVE: '/api/rooms/leave',
   GET: (id) => `/api/rooms/${id}`,
+  CHECK_USER_ROOM: '/api/rooms/check-user-room',
+  VERIFY_PASSWORD: '/api/rooms/verify-password',
 };
 
 export const roomApi = {
   getRooms: async (params = {}) => {
-    const response = await api.get(API_ENDPOINTS.LIST, { params });
+    const response = await apiClient.get(API_ENDPOINTS.LIST, { params });
     return response.data.data || response.data;
   },
 
   createRoom: async (roomData) => {
     try {
-      const response = await api.post(API_ENDPOINTS.CREATE, roomData);
+      const response = await apiClient.post(API_ENDPOINTS.CREATE, roomData);
       // Backend trả về { success: true, data: {...}, message: "..." }
       if (response.data.success && response.data.data) {
         return { room: response.data.data };
@@ -53,17 +32,29 @@ export const roomApi = {
   },
 
   joinRoom: async (roomId, password = '') => {
-    const response = await api.post(API_ENDPOINTS.JOIN, { roomId, password });
+    const response = await apiClient.post(API_ENDPOINTS.JOIN, { roomId, password });
     return response.data.data || response.data;
   },
 
   leaveRoom: async (roomId) => {
-    const response = await api.post(API_ENDPOINTS.LEAVE, { roomId });
+    const response = await apiClient.post(API_ENDPOINTS.LEAVE, { roomId });
     return response.data.data || response.data;
   },
 
   getRoom: async (roomId) => {
-    const response = await api.get(API_ENDPOINTS.GET(roomId));
+    const response = await apiClient.get(API_ENDPOINTS.GET(roomId));
+    return response.data.data || response.data;
+  },
+
+  checkUserRoom: async () => {
+    const response = await apiClient.get(API_ENDPOINTS.CHECK_USER_ROOM);
+    return response.data.data || response.data;
+  },
+
+  verifyPassword: async (roomId, password) => {
+    console.log('API verifyPassword được gọi:', { roomId, hasPassword: !!password, passwordLength: password?.length });
+    const response = await apiClient.post(API_ENDPOINTS.VERIFY_PASSWORD, { roomId, password });
+    console.log('Phản hồi từ API verifyPassword:', response.data);
     return response.data.data || response.data;
   },
 };

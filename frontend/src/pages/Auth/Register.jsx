@@ -81,7 +81,7 @@ function Register() {
     try {
       const data = await authApi.register({
         username: formData.username,
-        nickname: formData.nickname || formData.username, // Use nickname or fallback to username
+        nickname: formData.nickname || formData.username, // Sử dụng nickname hoặc fallback về username
         password: formData.password,
       });
 

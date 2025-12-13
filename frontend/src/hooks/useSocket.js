@@ -7,7 +7,7 @@ export const useSocket = () => {
 
   useEffect(() => {
     if (isAuthenticated && token) {
-      console.log('🔌 useSocket: Attempting to connect...');
+      console.log('useSocket: Đang thử kết nối...');
       socketClient.connect();
 
       // Không cần thêm listeners ở đây vì đã có trong socketClient
@@ -17,7 +17,7 @@ export const useSocket = () => {
         // Chỉ cleanup nếu thực sự cần (khi logout)
       };
     } else {
-      console.log('🔌 useSocket: Not authenticated, disconnecting...');
+      console.log('useSocket: Chưa xác thực, đang ngắt kết nối...');
       socketClient.forceDisconnect();
     }
   }, [isAuthenticated, token]);

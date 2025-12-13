@@ -26,7 +26,7 @@ function Login() {
       ...prev,
       [name]: value,
     }));
-    // Clear error when user types
+    // Xóa lỗi khi người dùng nhập
     if (errors[name]) {
       setErrors((prev) => ({
         ...prev,

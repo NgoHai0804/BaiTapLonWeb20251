@@ -26,18 +26,18 @@ const PlayVsBot = () => {
   const [historyIndex, setHistoryIndex] = useState(-1);
   const [isBotThinking, setIsBotThinking] = useState(false);
 
-  // Check winner helper
+  // Hàm kiểm tra người thắng
   const checkWinnerLocal = (board, x, y) => {
     return checkWinnerUtil(board, x, y);
   };
 
-  // Bot move - gọi API hoặc tính toán local
+  // Bot thực hiện nước đi - gọi API hoặc tính toán local
   const makeBotMove = useCallback(async () => {
     if (isGameOver || currentTurn !== 'O') return;
 
     setIsBotThinking(true);
     
-    // Simulate bot thinking delay
+    // Mô phỏng thời gian bot suy nghĩ
     await new Promise(resolve => setTimeout(resolve, 500));
 
     try {
@@ -60,7 +60,7 @@ const PlayVsBot = () => {
       if (data.success && data.move) {
         handleMove(data.move.x, data.move.y, 'O');
       } else {
-        // Fallback: random move
+        // Dự phòng: nước đi ngẫu nhiên
         const emptyCells = [];
         for (let x = 0; x < BOARD_SIZE; x++) {
           for (let y = 0; y < BOARD_SIZE; y++) {
@@ -75,8 +75,8 @@ const PlayVsBot = () => {
         }
       }
     } catch (error) {
-      console.error('Bot move error:', error);
-      // Fallback: random move
+      console.error('Lỗi khi bot thực hiện nước đi:', error);
+      // Dự phòng: nước đi ngẫu nhiên
       const emptyCells = [];
       for (let x = 0; x < BOARD_SIZE; x++) {
         for (let y = 0; y < BOARD_SIZE; y++) {
@@ -94,14 +94,14 @@ const PlayVsBot = () => {
     }
   }, [board, currentTurn, isGameOver, difficulty, history]);
 
-  // Handle player move
+  // Xử lý nước đi của người chơi
   const handleMove = (x, y, mark) => {
     if (isGameOver || board[x][y] !== null) return;
 
     const newBoard = board.map(row => [...row]);
     newBoard[x][y] = mark;
 
-    // Update history
+    // Cập nhật lịch sử nước đi
     const newHistory = history.slice(0, historyIndex + 1);
     newHistory.push({ x, y, mark, moveNumber: newHistory.length + 1 });
     setHistory(newHistory);
@@ -109,7 +109,7 @@ const PlayVsBot = () => {
 
     setBoard(newBoard);
 
-    // Check winner
+    // Kiểm tra người thắng
     if (checkWinnerLocal(newBoard, x, y)) {
       setIsGameOver(true);
       setWinner(mark);
@@ -123,7 +123,7 @@ const PlayVsBot = () => {
       return;
     }
 
-    // Check draw
+    // Kiểm tra hòa (bàn cờ đầy)
     const isFull = newBoard.every(row => row.every(cell => cell !== null));
     if (isFull) {
       setIsGameOver(true);
@@ -133,25 +133,25 @@ const PlayVsBot = () => {
       return;
     }
 
-    // Switch turn
+    // Chuyển lượt
     setCurrentTurn(mark === 'X' ? 'O' : 'X');
   };
 
-  // Handle cell click
+  // Xử lý khi click vào ô cờ
   const handleCellClick = (x, y) => {
     if (currentTurn !== 'X' || isGameOver || isBotThinking) return;
     playSound('move');
     handleMove(x, y, 'X');
   };
 
-  // Bot plays after player
+  // Bot tự động chơi sau khi người chơi đi
   useEffect(() => {
     if (currentTurn === 'O' && !isGameOver && !isBotThinking) {
       makeBotMove();
     }
   }, [currentTurn, isGameOver, makeBotMove, isBotThinking]);
 
-  // Undo move
+  // Hoàn tác nước đi
   const handleUndo = () => {
     if (historyIndex < 0 || isGameOver) return;
     
@@ -170,7 +170,7 @@ const PlayVsBot = () => {
     setCurrentTurn(newHistory.length % 2 === 0 ? 'X' : 'O');
   };
 
-  // Redo move
+  // Làm lại nước đi
   const handleRedo = () => {
     if (historyIndex >= history.length - 1 || isGameOver) return;
 
@@ -184,7 +184,7 @@ const PlayVsBot = () => {
     setCurrentTurn(move.mark === 'X' ? 'O' : 'X');
   };
 
-  // Reset game
+  // Khởi động lại game
   const handleReset = () => {
     setBoard(Array(BOARD_SIZE).fill(null).map(() => Array(BOARD_SIZE).fill(null)));
     setCurrentTurn('X');
@@ -195,7 +195,7 @@ const PlayVsBot = () => {
     setHistoryIndex(-1);
   };
 
-  // Start new game with difficulty
+  // Bắt đầu game mới với độ khó được chọn
   const handleStartGame = (newDifficulty) => {
     setDifficulty(newDifficulty);
     handleReset();

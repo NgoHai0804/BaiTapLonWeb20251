@@ -2,12 +2,15 @@ import React, { useEffect, useState, useCallback } from 'react';
 import { useAuth } from '../../hooks/useAuth';
 import { userApi } from '../../services/api/userApi';
 import { toast } from 'react-toastify';
+import { useNavigate } from 'react-router-dom';
 
 const Profile = () => {
-  const { user, updateUser } = useAuth();
+  const { user, updateUser, logout } = useAuth();
+  const navigate = useNavigate();
   const [profile, setProfile] = useState(null);
   const [loading, setLoading] = useState(true);
   const [editing, setEditing] = useState(false);
+  const [showChangePassword, setShowChangePassword] = useState(false);
   const [formData, setFormData] = useState({
     nickname: '',
     avatarUrl: '',
@@ -31,7 +34,7 @@ const Profile = () => {
       }
     } catch (error) {
       toast.error('Không thể tải thông tin profile');
-      console.error('Load profile error:', error);
+      console.error('Lỗi khi tải profile:', error);
       setProfile(null);
     } finally {
       setLoading(false);
@@ -142,7 +145,6 @@ const Profile = () => {
               </div>
               <div>
                 <h2 className="text-2xl font-bold">{profile?.nickname || profile?.username}</h2>
-                <p className="text-gray-600">@{profile?.username}</p>
                 {profile?.email && <p className="text-gray-500 text-sm">{profile.email}</p>}
               </div>
             </div>
@@ -171,12 +173,24 @@ const Profile = () => {
               <div className="text-3xl font-bold text-blue-600">{stats.score}</div>
             </div>
 
-            <button
-              onClick={() => setEditing(true)}
-              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-            >
-              Chỉnh sửa profile
-            </button>
+            <div className="flex gap-2">
+              <button
+                onClick={() => setEditing(true)}
+                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+              >
+                Chỉnh sửa profile
+              </button>
+              <button
+                onClick={() => {
+                  if (window.confirm('Bạn có chắc muốn đăng xuất?')) {
+                    logout(); // logout đã có logic disconnect socket và navigate
+                  }
+                }}
+                className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
+              >
+                Đăng xuất
+              </button>
+            </div>
           </div>
         ) : (
           <form onSubmit={handleUpdate}>
@@ -230,47 +244,83 @@ const Profile = () => {
 
         {/* Change Password Section */}
         <div className="bg-white rounded-lg shadow-lg p-6 mt-6">
-          <h2 className="text-xl font-semibold mb-4">Đổi mật khẩu</h2>
-          <form onSubmit={handleChangePassword} className="space-y-4">
-            <div>
-              <label className="block text-sm font-medium mb-2">Mật khẩu hiện tại</label>
-              <input
-                type="password"
-                value={passwordData.currentPassword}
-                onChange={(e) => setPasswordData({ ...passwordData, currentPassword: e.target.value })}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                required
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium mb-2">Mật khẩu mới</label>
-              <input
-                type="password"
-                value={passwordData.newPassword}
-                onChange={(e) => setPasswordData({ ...passwordData, newPassword: e.target.value })}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                required
-                minLength={8}
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium mb-2">Xác nhận mật khẩu mới</label>
-              <input
-                type="password"
-                value={passwordData.confirmPassword}
-                onChange={(e) => setPasswordData({ ...passwordData, confirmPassword: e.target.value })}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                required
-                minLength={8}
-              />
-            </div>
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-xl font-semibold">Đổi mật khẩu</h2>
             <button
-              type="submit"
-              className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+              onClick={() => {
+                setShowChangePassword(!showChangePassword);
+                if (showChangePassword) {
+                  // Reset form khi đóng
+                  setPasswordData({
+                    currentPassword: '',
+                    newPassword: '',
+                    confirmPassword: '',
+                  });
+                }
+              }}
+              className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors"
             >
-              Đổi mật khẩu
+              {showChangePassword ? 'Ẩn' : 'Đổi mật khẩu'}
             </button>
-          </form>
+          </div>
+          {showChangePassword && (
+            <form onSubmit={handleChangePassword} className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium mb-2">Mật khẩu hiện tại</label>
+                <input
+                  type="password"
+                  value={passwordData.currentPassword}
+                  onChange={(e) => setPasswordData({ ...passwordData, currentPassword: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  required
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-2">Mật khẩu mới</label>
+                <input
+                  type="password"
+                  value={passwordData.newPassword}
+                  onChange={(e) => setPasswordData({ ...passwordData, newPassword: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  required
+                  minLength={8}
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-2">Xác nhận mật khẩu mới</label>
+                <input
+                  type="password"
+                  value={passwordData.confirmPassword}
+                  onChange={(e) => setPasswordData({ ...passwordData, confirmPassword: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  required
+                  minLength={8}
+                />
+              </div>
+              <div className="flex gap-2">
+                <button
+                  type="submit"
+                  className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                >
+                  Đổi mật khẩu
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowChangePassword(false);
+                    setPasswordData({
+                      currentPassword: '',
+                      newPassword: '',
+                      confirmPassword: '',
+                    });
+                  }}
+                  className="px-6 py-2 bg-gray-300 text-gray-700 rounded-lg hover:bg-gray-400 transition-colors"
+                >
+                  Hủy
+                </button>
+              </div>
+            </form>
+          )}
         </div>
       </div>
     </div>

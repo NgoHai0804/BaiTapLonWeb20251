@@ -14,7 +14,11 @@ const JWT_EXPIRES_IN = "30d"; // token có hiệu lực 7 ngày
 
 // Sinh JWT
 exports.signToken = (user) => {
-  return jwt.sign({ id: user._id, username: user.username }, JWT_SECRET, {
+  return jwt.sign({ 
+    id: user._id, 
+    username: user.username,
+    nickname: user.nickname || user.username
+  }, JWT_SECRET, {
     expiresIn: JWT_EXPIRES_IN,
   });
 };

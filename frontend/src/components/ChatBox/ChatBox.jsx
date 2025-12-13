@@ -14,26 +14,28 @@ const ChatBox = ({ roomId }) => {
   const messagesEndRef = useRef(null);
   const messagesContainerRef = useRef(null);
 
-  // Scroll to bottom when new message arrives
+  // Cuộn xuống cuối khi có tin nhắn mới
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   };
 
+  // Tự động cuộn xuống khi có tin nhắn mới
   useEffect(() => {
     scrollToBottom();
   }, [messages]);
 
-  // Load chat history when component mounts
+  // Tải lịch sử chat khi component được mount
   useEffect(() => {
     if (!roomId) return;
 
+    // Hàm tải tin nhắn từ server
     const loadMessages = () => {
       socketClient.emit(SOCKET_EVENTS.GET_ROOM_MESSAGES, { roomId, limit: 50 });
     };
 
     loadMessages();
 
-    // Listen for room messages
+    // Xử lý khi nhận được danh sách tin nhắn của phòng
     const handleRoomMessages = (data) => {
       if (data.roomId === roomId) {
         dispatch(setMessages(data.messages || []));
@@ -41,7 +43,7 @@ const ChatBox = ({ roomId }) => {
       }
     };
 
-    // Listen for new messages
+    // Xử lý khi nhận được tin nhắn mới
     const handleMessageReceived = (messageData) => {
       if (messageData.roomId === roomId) {
         dispatch(addMessage({
@@ -59,9 +61,9 @@ const ChatBox = ({ roomId }) => {
       }
     };
 
-    // Listen for errors
+    // Xử lý lỗi chat
     const handleChatError = (data) => {
-      console.error('Chat error:', data.message);
+      console.error('Lỗi chat:', data.message);
     };
 
     socketClient.on(SOCKET_EVENTS.ROOM_MESSAGES, handleRoomMessages);
@@ -75,26 +77,31 @@ const ChatBox = ({ roomId }) => {
     };
   }, [roomId, dispatch]);
 
+  // Xử lý gửi tin nhắn
   const handleSendMessage = (e) => {
     e.preventDefault();
     if (!inputMessage.trim() || !roomId) return;
 
+    // Gửi tin nhắn qua socket
     socketClient.emit(SOCKET_EVENTS.SEND_MESSAGE, {
       roomId,
       message: inputMessage.trim(),
       type: 'text',
     });
 
+    // Xóa input và phát âm thanh
     setInputMessage('');
     playSound('message');
   };
 
+  // Định dạng thời gian hiển thị
   const formatTime = (timestamp) => {
     if (!timestamp) return '';
     const date = new Date(timestamp);
     return date.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' });
   };
 
+  // Kiểm tra xem tin nhắn có phải của mình không
   const isMyMessage = (senderId) => {
     const userId = user?.id || user?._id;
     return (senderId?.toString() === userId?.toString());
@@ -132,7 +139,7 @@ const ChatBox = ({ roomId }) => {
                 >
                   {!myMessage && (
                     <div className="text-xs font-semibold mb-1 opacity-75">
-                      {msg.sender?.username || 'Người chơi'}
+                      {msg.sender?.nickname || msg.sender?.username || 'Người chơi'}
                     </div>
                   )}
                   <div className="text-sm break-words">{msg.message}</div>

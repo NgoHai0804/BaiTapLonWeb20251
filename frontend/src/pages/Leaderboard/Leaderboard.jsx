@@ -14,10 +14,23 @@ const Leaderboard = () => {
     try {
       setLoading(true);
       const data = await userApi.getLeaderboard('caro');
-      setLeaderboard(data || []);
+      // Đảm bảo data luôn là array
+      if (Array.isArray(data)) {
+        setLeaderboard(data);
+      } else if (data && Array.isArray(data.data)) {
+        // Nếu data là object có property data là array
+        setLeaderboard(data.data);
+      } else if (data && typeof data === 'object') {
+        // Nếu data là object nhưng không phải array, thử convert
+        setLeaderboard([]);
+        console.warn('Leaderboard data không phải array:', data);
+      } else {
+        setLeaderboard([]);
+      }
     } catch (error) {
       toast.error('Không thể tải bảng xếp hạng');
-      console.error(error);
+      console.error('Lỗi khi tải bảng xếp hạng:', error);
+      setLeaderboard([]); // Đảm bảo luôn là array ngay cả khi có lỗi
     } finally {
       setLoading(false);
     }
@@ -52,7 +65,7 @@ const Leaderboard = () => {
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
-              {leaderboard.length === 0 ? (
+              {!Array.isArray(leaderboard) || leaderboard.length === 0 ? (
                 <tr>
                   <td colSpan="3" className="px-6 py-4 text-center text-gray-500">
                     Chưa có dữ liệu xếp hạng
@@ -84,7 +97,6 @@ const Leaderboard = () => {
                           <div className="text-sm font-medium text-gray-900">
                             {player.nickname || player.username}
                           </div>
-                          <div className="text-sm text-gray-500">@{player.username}</div>
                         </div>
                       </div>
                     </td>

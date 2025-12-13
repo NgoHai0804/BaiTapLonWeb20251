@@ -26,6 +26,9 @@ const RoomSchema = new Schema({
   },
 
   players: { type: [RoomPlayerSchema], default: [] }, // DS người chơi trong phòng
+  turnTimeLimit: { type: Number, default: 30 }, // Thời gian mỗi lượt đi (giây), mặc định 30s
+  playerMarks: { type: Map, of: String, default: {} }, // Map userId -> mark (X hoặc O)
+  firstTurn: { type: String, enum: ['X', 'O'], default: 'X' }, // Ai đi trước (X hoặc O)
   createdAt: { type: Date, default: Date.now }, // Thời gian tạo phòng
 });
 

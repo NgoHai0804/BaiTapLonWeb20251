@@ -21,7 +21,7 @@ const server = http.createServer(app);
 // Khởi tạo Socket.IO
 const io = initSocket(server);
 
-// Lắng nghe port
+// Lắng nghe trên cổng được chỉ định
 server.listen(PORT, () => {
-  console.log(`🚀 Server running on port ${PORT}`);
+  console.log(`Server đang chạy trên cổng ${PORT}`);
 });

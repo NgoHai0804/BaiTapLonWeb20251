@@ -19,6 +19,10 @@ export const gameSocket = {
     socketClient.emit(SOCKET_EVENTS.START_GAME, { roomId });
   },
 
+  updateRoomSettings: (roomId, settings) => {
+    socketClient.emit(SOCKET_EVENTS.UPDATE_ROOM_SETTINGS, { roomId, ...settings });
+  },
+
   makeMove: (roomId, x, y) => {
     socketClient.emit(SOCKET_EVENTS.MAKE_MOVE, { roomId, x, y });
   },
@@ -43,13 +47,14 @@ export const gameSocket = {
     socketClient.emit(SOCKET_EVENTS.REQUEST_DRAW, { roomId });
   },
 
+  cancelDraw: (roomId) => {
+    socketClient.emit(SOCKET_EVENTS.CANCEL_DRAW, { roomId });
+  },
+
   respondDraw: (roomId, accept) => {
     socketClient.emit('respond_draw', { roomId, accept });
   },
 
-  clearBoard: (roomId) => {
-    socketClient.emit(SOCKET_EVENTS.CLEAR_BOARD, { roomId });
-  },
 
   inviteToRoom: (roomId, friendId) => {
     socketClient.emit(SOCKET_EVENTS.INVITE_TO_ROOM, { roomId, friendId });
@@ -92,12 +97,32 @@ export const gameSocket = {
     socketClient.on(SOCKET_EVENTS.PLAYER_READY_STATUS, callback);
   },
 
+  onReadyError: (callback) => {
+    socketClient.on(SOCKET_EVENTS.READY_ERROR, callback);
+  },
+
   onGameStart: (callback) => {
     socketClient.on(SOCKET_EVENTS.GAME_START, callback);
   },
 
+  onStartError: (callback) => {
+    socketClient.on(SOCKET_EVENTS.START_ERROR, callback);
+  },
+
+  onRoomSettingsUpdated: (callback) => {
+    socketClient.on(SOCKET_EVENTS.ROOM_SETTINGS_UPDATED, callback);
+  },
+
+  onRoomSettingsError: (callback) => {
+    socketClient.on(SOCKET_EVENTS.ROOM_SETTINGS_ERROR, callback);
+  },
+
   onMoveMade: (callback) => {
     socketClient.on(SOCKET_EVENTS.MOVE_MADE, callback);
+  },
+
+  onTurnStarted: (callback) => {
+    socketClient.on(SOCKET_EVENTS.TURN_STARTED, callback);
   },
 
   onMoveError: (callback) => {
@@ -116,8 +141,16 @@ export const gameSocket = {
     socketClient.on(SOCKET_EVENTS.GAME_END, callback);
   },
 
+  onSurrenderError: (callback) => {
+    socketClient.on(SOCKET_EVENTS.SURRENDER_ERROR, callback);
+  },
+
   onDrawRequested: (callback) => {
     socketClient.on(SOCKET_EVENTS.DRAW_REQUESTED, callback);
+  },
+
+  onDrawCancelled: (callback) => {
+    socketClient.on(SOCKET_EVENTS.DRAW_CANCELLED, callback);
   },
 
   onDrawAccepted: (callback) => {
@@ -132,13 +165,6 @@ export const gameSocket = {
     socketClient.on(SOCKET_EVENTS.DRAW_ERROR, callback);
   },
 
-  onBoardCleared: (callback) => {
-    socketClient.on(SOCKET_EVENTS.BOARD_CLEARED, callback);
-  },
-
-  onClearBoardError: (callback) => {
-    socketClient.on(SOCKET_EVENTS.CLEAR_BOARD_ERROR, callback);
-  },
 
   onGameState: (callback) => {
     socketClient.on(SOCKET_EVENTS.GAME_STATE, callback);
@@ -193,20 +219,48 @@ export const gameSocket = {
     socketClient.off(SOCKET_EVENTS.PLAYER_READY_STATUS, callback);
   },
 
+  offReadyError: (callback) => {
+    socketClient.off(SOCKET_EVENTS.READY_ERROR, callback);
+  },
+
   offGameStart: (callback) => {
     socketClient.off(SOCKET_EVENTS.GAME_START, callback);
+  },
+
+  offStartError: (callback) => {
+    socketClient.off(SOCKET_EVENTS.START_ERROR, callback);
+  },
+
+  offRoomSettingsUpdated: (callback) => {
+    socketClient.off(SOCKET_EVENTS.ROOM_SETTINGS_UPDATED, callback);
+  },
+
+  offRoomSettingsError: (callback) => {
+    socketClient.off(SOCKET_EVENTS.ROOM_SETTINGS_ERROR, callback);
   },
 
   offMoveMade: (callback) => {
     socketClient.off(SOCKET_EVENTS.MOVE_MADE, callback);
   },
 
+  offTurnStarted: (callback) => {
+    socketClient.off(SOCKET_EVENTS.TURN_STARTED, callback);
+  },
+
   offGameEnd: (callback) => {
     socketClient.off(SOCKET_EVENTS.GAME_END, callback);
   },
 
+  offSurrenderError: (callback) => {
+    socketClient.off(SOCKET_EVENTS.SURRENDER_ERROR, callback);
+  },
+
   offDrawRequested: (callback) => {
     socketClient.off(SOCKET_EVENTS.DRAW_REQUESTED, callback);
+  },
+
+  offDrawCancelled: (callback) => {
+    socketClient.off(SOCKET_EVENTS.DRAW_CANCELLED, callback);
   },
 
   offDrawAccepted: (callback) => {
@@ -221,13 +275,6 @@ export const gameSocket = {
     socketClient.off(SOCKET_EVENTS.DRAW_ERROR, callback);
   },
 
-  offBoardCleared: (callback) => {
-    socketClient.off(SOCKET_EVENTS.BOARD_CLEARED, callback);
-  },
-
-  offClearBoardError: (callback) => {
-    socketClient.off(SOCKET_EVENTS.CLEAR_BOARD_ERROR, callback);
-  },
 
   offGameReset: (callback) => {
     socketClient.off(SOCKET_EVENTS.GAME_RESET, callback);
@@ -255,6 +302,10 @@ export const gameSocket = {
 
   offReconnectSuccess: (callback) => {
     socketClient.off(SOCKET_EVENTS.RECONNECT_SUCCESS, callback);
+  },
+
+  offGameState: (callback) => {
+    socketClient.off(SOCKET_EVENTS.GAME_STATE, callback);
   },
 };
 
