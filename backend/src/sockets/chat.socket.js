@@ -174,3 +174,32 @@ module.exports = function chatSocket(io, socket) {
     }
   });
 };
+// chat.socket.js
+// ... (giữ nguyên các phần cũ của Hiệp)
+
+  // --- CODE MỚI THÊM: Xử lý trạng thái đang soạn tin nhắn ---
+  socket.on("typing", ({ roomId, receiverId, isTyping }) => {
+    const userId = socket.user._id;
+    const username = socket.user.username;
+
+    if (roomId) {
+      // Thông báo cho mọi người trong phòng trừ người đang gõ
+      socket.to(roomId.toString()).emit("user_typing", {
+        userId,
+        username,
+        roomId,
+        isTyping
+      });
+    } else if (receiverId) {
+      // Thông báo cho người nhận chat riêng
+      io.to(receiverId.toString()).emit("user_typing", {
+        userId,
+        username,
+        isTyping
+      });
+    }
+  });
+  // -------------------------------------------------------
+
+  log("Chat socket initialized for user", socket.user.username);
+};
