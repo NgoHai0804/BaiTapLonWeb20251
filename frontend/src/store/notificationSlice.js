@@ -1,107 +1,59 @@
 import { createSlice } from '@reduxjs/toolkit';
 
+const initialState = {
+  notifications: [],
+  unreadCount: 0,
+};
+
 const notificationSlice = createSlice({
-    name: 'notification',
-    initialState: {
-        // Array of notifications
-        notifications: [],
-
-        // Unread count
-        unreadCount: 0,
-
-        // Sound enabled
-        soundEnabled: true,
+  name: 'notification',
+  initialState,
+  reducers: {
+    addNotification: (state, action) => {
+      const notification = {
+        id: action.payload.id || Date.now().toString(),
+        type: action.payload.type,
+        title: action.payload.title,
+        message: action.payload.message,
+        data: action.payload.data,
+        timestamp: action.payload.timestamp || new Date().toISOString(),
+        read: false,
+      };
+      state.notifications.unshift(notification);
+      state.unreadCount += 1;
     },
-    reducers: {
-        // Add notification
-        addNotification: (state, action) => {
-            const notification = {
-                id: Date.now() + Math.random(),
-                timestamp: new Date().toISOString(),
-                read: false,
-                ...action.payload
-            };
-
-            state.notifications.unshift(notification);
-            state.unreadCount += 1;
-
-            // Keep only last 50 notifications
-            if (state.notifications.length > 50) {
-                state.notifications = state.notifications.slice(0, 50);
-            }
-        },
-
-        // Mark notification as read
-        markAsRead: (state, action) => {
-            const notificationId = action.payload;
-            const notification = state.notifications.find(n => n.id === notificationId);
-
-            if (notification && !notification.read) {
-                notification.read = true;
-                state.unreadCount = Math.max(0, state.unreadCount - 1);
-            }
-        },
-
-        // Mark all as read
-        markAllAsRead: (state) => {
-            state.notifications.forEach(n => {
-                n.read = true;
-            });
-            state.unreadCount = 0;
-        },
-
-        // Remove notification
-        removeNotification: (state, action) => {
-            const notificationId = action.payload;
-            const index = state.notifications.findIndex(n => n.id === notificationId);
-
-            if (index !== -1) {
-                if (!state.notifications[index].read) {
-                    state.unreadCount = Math.max(0, state.unreadCount - 1);
-                }
-                state.notifications.splice(index, 1);
-            }
-        },
-
-        // Clear all notifications
-        clearAllNotifications: (state) => {
-            state.notifications = [];
-            state.unreadCount = 0;
-        },
-
-        // Toggle sound
-        toggleSound: (state) => {
-            state.soundEnabled = !state.soundEnabled;
-        },
-
-        // Set sound
-        setSound: (state, action) => {
-            state.soundEnabled = action.payload;
+    markAsRead: (state, action) => {
+      const notification = state.notifications.find(n => n.id === action.payload);
+      if (notification && !notification.read) {
+        notification.read = true;
+        state.unreadCount = Math.max(0, state.unreadCount - 1);
+      }
+    },
+    markAllAsRead: (state) => {
+      state.notifications.forEach(n => {
+        if (!n.read) {
+          n.read = true;
         }
-    }
+      });
+      state.unreadCount = 0;
+    },
+    removeNotification: (state, action) => {
+      const index = state.notifications.findIndex(n => n.id === action.payload);
+      if (index !== -1) {
+        const notification = state.notifications[index];
+        if (!notification.read) {
+          state.unreadCount = Math.max(0, state.unreadCount - 1);
+        }
+        state.notifications.splice(index, 1);
+      }
+    },
+    clearNotifications: (state) => {
+      state.notifications = [];
+      state.unreadCount = 0;
+    },
+  },
 });
 
-export const {
-    addNotification,
-    markAsRead,
-    markAllAsRead,
-    removeNotification,
-    clearAllNotifications,
-    toggleSound,
-    setSound
-} = notificationSlice.actions;
-
+export const { addNotification, markAsRead, markAllAsRead, removeNotification, clearNotifications } = notificationSlice.actions;
 export default notificationSlice.reducer;
 
-/**
- * Notification Types:
- * - 'friend_online': Friend came online
- * - 'friend_offline': Friend went offline
- * - 'friend_request': New friend request
- * - 'friend_accepted': Friend request accepted
- * - 'invite_room': Room invitation
- * - 'game_started': Game started
- * - 'game_ended': Game ended
- * - 'message': New message
- * - 'system': System notification
- */
