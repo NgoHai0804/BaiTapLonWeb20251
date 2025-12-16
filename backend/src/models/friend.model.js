@@ -8,6 +8,8 @@ const FriendSchema = new Schema({
   createdAt: { type: Date, default: Date.now }, // Thời gian tạo lời mời
   updateAt: { type: Date, default: Date.now }, // Thời gian cập nhật gần nhất
 });
+//AI choi game
+
 
 // Middleware tự động cập nhật updateAt mỗi khi save
 FriendSchema.pre('save', function(next) {
