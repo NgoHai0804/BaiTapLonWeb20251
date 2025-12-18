@@ -10,5 +10,6 @@ router.use("/auth", require("./auth.routes"));
 router.use("/user", require("./user.routes"));
 router.use("/friend", require("./friend.routes"));
 router.use("/room", require("./room.routes"));
+router.use("/history", require("./gameHistory.routes"));
 
 module.exports = router;

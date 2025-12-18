@@ -14,13 +14,14 @@ const GameStatSchema = new Schema(
 );
 
 const UserSchema = new Schema({
-  userId: { type: Number, index: true},
+  userId: { type: Number, index: true },
   username: { type: String, required: true, unique: true, index: true }, // Tên đăng nhập
   passwordHash: { type: String, required: true }, // Mật khẩu -> hash
   nickname: { type: String, required: true, unique: true }, // Tên hiển thị
   email: { type: String }, // Email --> cần xác thực --> Lấy lại mật khẩu
 
   avatarUrl: { type: String }, // Avatar
+  bio: { type: String, maxlength: 500, default: '' }, // Mô tả cá nhân
   status: {
     type: String,
     enum: ["offline", "online", "in_game", "banned"],

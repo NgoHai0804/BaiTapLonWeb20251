@@ -1,24 +1,50 @@
-// friendApi.js
+import api from './axios';
 
-// Quản lý danh sách bạn bè, lời mời, trạng thái online/offline.
+/**
+ * Friend API Services
+ */
 
-// Nhiệm vụ:
+// Lấy danh sách bạn bè
+export const getFriendsList = () => {
+    return api.get('/friend');
+};
 
-// Lấy danh sách bạn bè (GET /friends).
+// Lấy danh sách lời mời kết bạn
+export const getFriendRequests = () => {
+    return api.get('/friend/requests');
+};
 
-// Gửi lời mời kết bạn (POST /friends/invite).
+// Gửi yêu cầu kết bạn
+export const sendFriendRequest = (addresseeId) => {
+    return api.post('/friend/request', { addresseeId });
+};
 
-// Chấp nhận hoặc từ chối lời mời (POST /friends/respond).
+// Chấp nhận lời mời kết bạn
+export const acceptFriendRequest = (requesterId) => {
+    return api.post('/friend/accept', { requesterId });
+};
 
-// Xóa bạn (DELETE /friends/:id).
+// Từ chối/hủy lời mời kết bạn
+export const cancelFriendRequest = (requesterId) => {
+    return api.post('/friend/cancel', { requesterId });
+};
 
-// Kiểm tra trạng thái online (GET /friends/status hoặc qua socket).
+// Hủy kết bạn
+export const unfriend = (friendId) => {
+    return api.post('/friend/unfriend', { friendId });
+};
 
-// Gợi ý cấu trúc:
+// Tìm kiếm người dùng
+export const searchUsers = (searchData) => {
+    return api.post('/friend/search', searchData);
+};
 
-// friendApi = {
-//   getFriends(),
-//   inviteFriend(userId),
-//   respondInvite(inviteId, status),
-//   removeFriend(userId)
-// }
+export default {
+    getFriendsList,
+    getFriendRequests,
+    sendFriendRequest,
+    acceptFriendRequest,
+    cancelFriendRequest,
+    unfriend,
+    searchUsers
+};

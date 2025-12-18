@@ -1,28 +1,44 @@
-// userApi.js
+import api from './axios';
 
-// Xử lý mọi yêu cầu liên quan đến người dùng: đăng ký, đăng nhập, hồ sơ cá nhân.
+/**
+ * User API Services
+ */
 
-// Nhiệm vụ:
+// Lấy thông tin profile người dùng
+export const getUserProfile = () => {
+    return api.get('/user/profile');
+};
 
-// Gửi request đăng ký (POST /auth/register).
+// Cập nhật profile { username, avatar, bio }
+export const updateUserProfile = (profileData) => {
+    return api.put('/user/update-profile', profileData);
+};
 
-// Gửi request đăng nhập (POST /auth/login).
+// Lấy leaderboard
+export const getLeaderboard = (gameId = 'caro') => {
+    return api.get('/user/leaderboard', { params: { gameId } });
+};
 
-// Lấy thông tin người dùng (GET /user/profile).
+// Lấy lịch sử game của user
+export const getUserGameHistory = (userId, limit = 20, skip = 0) => {
+    return api.get(`/history/${userId}`, { params: { limit, skip } });
+};
 
-// Cập nhật thông tin hoặc avatar (PUT /user/profile).
+// Lấy chi tiết game để replay
+export const getGameDetail = (gameId) => {
+    return api.get(`/history/detail/${gameId}`);
+};
 
-// Sử dụng:
+// Lấy thống kê game
+export const getUserStats = (userId) => {
+    return api.get(`/history/stats/${userId}`);
+};
 
-// const res = await userApi.login({ email, password });
-
-
-// Gợi ý cấu trúc:
-
-// userApi = {
-//   login(data),
-//   register(data),
-//   getProfile(),
-//   updateProfile(data),
-//   changePassword(data)
-// }
+export default {
+    getUserProfile,
+    updateUserProfile,
+    getLeaderboard,
+    getUserGameHistory,
+    getGameDetail,
+    getUserStats
+};
