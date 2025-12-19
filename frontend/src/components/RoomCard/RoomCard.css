@@ -1,0 +1,224 @@
+.room-card {
+    background: #fff;
+    border-radius: 15px;
+    padding: 1.5rem;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08);
+    transition: all 0.3s ease;
+    border: 2px solid transparent;
+}
+
+.room-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 8px 25px rgba(102, 126, 234, 0.2);
+    border-color: #667eea;
+}
+
+.room-card.full {
+    opacity: 0.7;
+}
+
+.room-card.playing {
+    border-color: #ed8936;
+}
+
+/* Header */
+.room-card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1rem;
+    padding-bottom: 1rem;
+    border-bottom: 2px solid #e2e8f0;
+}
+
+.room-title {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.room-title h3 {
+    font-size: 1.25rem;
+    color: #2d3748;
+    margin: 0;
+    font-weight: 700;
+}
+
+.lock-icon {
+    color: #ed8936;
+    font-size: 1.1rem;
+}
+
+.unlock-icon {
+    color: #48bb78;
+    font-size: 1.1rem;
+}
+
+/* Status Badge */
+.status-badge {
+    padding: 0.4rem 1rem;
+    border-radius: 20px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.status-badge.waiting {
+    background: #c6f6d5;
+    color: #22543d;
+}
+
+.status-badge.full {
+    background: #fed7d7;
+    color: #742a2a;
+}
+
+.status-badge.playing {
+    background: #feebc8;
+    color: #7c2d12;
+}
+
+/* Body */
+.room-card-body {
+    margin-bottom: 1rem;
+}
+
+.room-info {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    margin-bottom: 1rem;
+}
+
+.info-item {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    color: #4a5568;
+    font-size: 0.95rem;
+}
+
+.info-item .icon {
+    color: #667eea;
+    font-size: 1rem;
+    flex-shrink: 0;
+}
+
+.info-item strong {
+    color: #2d3748;
+    font-weight: 600;
+}
+
+.players-count {
+    color: #2d3748;
+}
+
+.time {
+    color: #a0aec0;
+    font-size: 0.85rem;
+}
+
+/* Players List */
+.players-list {
+    display: flex;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+    padding: 1rem;
+    background: #f7fafc;
+    border-radius: 10px;
+    margin-top: 1rem;
+}
+
+.player-item {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 0.75rem;
+    background: #fff;
+    border-radius: 20px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+}
+
+.player-avatar {
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 2px solid #667eea;
+}
+
+.player-name {
+    font-size: 0.9rem;
+    color: #2d3748;
+    font-weight: 500;
+}
+
+/* Footer */
+.room-card-footer {
+    display: flex;
+    justify-content: center;
+    padding-top: 1rem;
+    border-top: 2px solid #e2e8f0;
+}
+
+.btn-join {
+    width: 100%;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: #fff;
+    border: none;
+    padding: 0.875rem 2rem;
+    border-radius: 25px;
+    font-size: 1rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.btn-join:hover:not(.disabled) {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 20px rgba(102, 126, 234, 0.4);
+}
+
+.btn-join.disabled {
+    background: #cbd5e0;
+    cursor: not-allowed;
+    opacity: 0.6;
+}
+
+/* Responsive */
+@media (max-width: 640px) {
+    .room-card {
+        padding: 1rem;
+    }
+
+    .room-title h3 {
+        font-size: 1.1rem;
+    }
+
+    .status-badge {
+        font-size: 0.75rem;
+        padding: 0.3rem 0.75rem;
+    }
+
+    .info-item {
+        font-size: 0.85rem;
+    }
+
+    .players-list {
+        padding: 0.75rem;
+    }
+
+    .player-item {
+        padding: 0.4rem 0.6rem;
+    }
+
+    .player-avatar {
+        width: 25px;
+        height: 25px;
+    }
+
+    .player-name {
+        font-size: 0.8rem;
+    }
+}

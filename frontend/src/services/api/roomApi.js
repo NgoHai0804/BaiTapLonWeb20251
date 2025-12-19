@@ -1,25 +1,51 @@
-// roomApi.js
+import api from './axios';
 
-// Quản lý các phòng chơi (rooms) — tương tác chính trong hệ thống game.
+/**
+ * Room API Services
+ * Quản lý các phòng chơi (rooms)
+ */
 
-// Nhiệm vụ:
+// Lấy danh sách phòng
+export const getRooms = (params = {}) => {
+    return api.get('/room', { params });
+};
 
-// Lấy danh sách phòng (GET /rooms).
+// Lấy chi tiết phòng
+export const getRoomDetail = (roomId) => {
+    return api.get(`/room/${roomId}`);
+};
 
-// Tạo phòng mới (POST /rooms).
+// Tạo phòng mới
+export const createRoom = (roomData) => {
+    return api.post('/room', roomData);
+};
 
-// Tham gia phòng (POST /rooms/join).
+// Tham gia phòng
+export const joinRoom = (roomId, password = null) => {
+    return api.post(`/room/${roomId}/join`, { password });
+};
 
-// Thoát phòng (POST /rooms/leave).
+// Thoát phòng
+export const leaveRoom = (roomId) => {
+    return api.post(`/room/${roomId}/leave`);
+};
 
-// Cập nhật trạng thái phòng (bắt đầu game, kết thúc,…).
+// Bắt đầu game
+export const startGame = (roomId) => {
+    return api.post(`/room/${roomId}/start`);
+};
 
-// Gợi ý cấu trúc:
+// Xóa phòng (chủ phòng)
+export const deleteRoom = (roomId) => {
+    return api.delete(`/room/${roomId}`);
+};
 
-// roomApi = {
-//   getRooms(params),
-//   createRoom(data),
-//   joinRoom(id, password),
-//   leaveRoom(id),
-//   startGame(id)
-// }
+export default {
+    getRooms,
+    getRoomDetail,
+    createRoom,
+    joinRoom,
+    leaveRoom,
+    startGame,
+    deleteRoom
+};
