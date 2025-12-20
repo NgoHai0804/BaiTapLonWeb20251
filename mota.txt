@@ -1,3 +1,5 @@
+Mô tả sơ qua
+
 Mô tả dự án Web Game Cờ Caro Online
 1. Tổng quan dự án
 Tên dự án: Caro Online Realtime
