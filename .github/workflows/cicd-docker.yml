@@ -39,6 +39,9 @@ jobs:
           tags: ngohai0804/caro-online:staging
           cache-from: type=registry,ref=ngohai0804/caro-online:staging
           cache-to: type=inline
+          build-args: |
+            VITE_API_URL=https://baitaplonweb20251.onrender.com
+            VITE_SOCKET_URL=https://baitaplonweb20251.onrender.com
 
   deploy:
     name: Deploy to Server
