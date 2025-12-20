@@ -43,7 +43,7 @@ if (process.env.NODE_ENV === "production") {
 } else {
   // Development mode
   app.get("/", (req, res) => {
-    res.send("🚀 Caro Online Backend đang hoạt động! (Development Mode)");
+    res.send("Caro Online Backend đang hoạt động! (Development Mode)");
   });
 }
 

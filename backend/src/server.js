@@ -16,11 +16,11 @@ const startServer = async () => {
     const io = initSocket(server);
 
     server.listen(PORT, () => {
-      console.log(`🚀 Server đang chạy trên cổng ${PORT}`);
-      console.log(`📡 Socket.IO đã được khởi tạo`);
+      console.log(`Server đang chạy trên cổng ${PORT}`);
+      console.log(`Socket.IO đã được khởi tạo`);
     });
   } catch (error) {
-    console.error("❌ Lỗi khởi động server:", error.message);
+    console.error("Lỗi khởi động server:", error.message);
     process.exit(1);
   }
 };
