@@ -1,1 +1,0 @@
-<!-- Mô tả dự án, cách chạy và cấu trúc backend -->

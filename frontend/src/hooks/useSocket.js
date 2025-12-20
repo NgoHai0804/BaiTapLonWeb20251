@@ -1,5 +1,29 @@
-// useSocket.js
+import { useEffect } from 'react';
+import { socketClient } from '../services/socket/socketClient';
+import { useAuth } from './useAuth';
 
-// Quản lý vòng đời kết nối Socket.IO (connect, disconnect, on/off events).
+export const useSocket = () => {
+  const { isAuthenticated, token } = useAuth();
 
-// Cung cấp emit, on, off cho component dùng dễ dàng.
+  useEffect(() => {
+    if (isAuthenticated && token) {
+      socketClient.connect();
+
+      return () => {
+        // Cleanup khi unmount
+      };
+    } else {
+      socketClient.forceDisconnect();
+    }
+  }, [isAuthenticated, token]);
+
+  return {
+    socket: socketClient.getSocket(),
+    isConnected: socketClient.isConnected(),
+    emit: socketClient.emit.bind(socketClient),
+    on: socketClient.on.bind(socketClient),
+    off: socketClient.off.bind(socketClient),
+  };
+};
+
+export default useSocket;

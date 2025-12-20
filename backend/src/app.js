@@ -1,16 +1,4 @@
-// app.js
-
-// Tạo và cấu hình ứng dụng Express
-
-// Nhiệm vụ:
-
-// Khởi tạo Express app
-
-// Gắn middleware (CORS, JSON parser, logger, error handler)
-
-// Gắn tất cả route (/api/auth, /api/room, …)
-
-// Trả về app để server.js dùng
+// app.js - khởi tạo và cấu hình Express app
 
 const express = require("express");
 const cors = require("cors");
@@ -20,20 +8,43 @@ const connectDB = require("./config/db");
 dotenv.config();
 const app = express();
 
-// Middleware cơ bản
 app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// Kết nối DB
-connectDB();
-
-// Routes
 const apiRouter = require("./routes/index");
 app.use("/api", apiRouter);
 
-app.get("/", (req, res) => {
-  res.send("🚀 Caro Online Backend đang hoạt động!");
+// Health check endpoint cho Docker
+app.get("/health", (req, res) => {
+  res.status(200).json({ 
+    status: "ok", 
+    timestamp: new Date().toISOString(),
+    uptime: process.uptime()
+  });
 });
+
+// Serve static files từ frontend build (production)
+if (process.env.NODE_ENV === "production") {
+  const path = require("path");
+  const frontendPath = path.join(__dirname, "../../frontend/dist");
+  
+  // Serve static files
+  app.use(express.static(frontendPath));
+  
+  // Fallback: serve index.html cho tất cả routes không phải API
+  app.get("*", (req, res) => {
+    // Không serve index.html cho API routes
+    if (req.path.startsWith("/api")) {
+      return res.status(404).json({ error: "API endpoint not found" });
+    }
+    res.sendFile(path.join(frontendPath, "index.html"));
+  });
+} else {
+  // Development mode
+  app.get("/", (req, res) => {
+    res.send("🚀 Caro Online Backend đang hoạt động! (Development Mode)");
+  });
+}
 
 module.exports = app;

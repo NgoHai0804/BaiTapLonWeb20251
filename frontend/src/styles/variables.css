@@ -1,45 +1,23 @@
-/*🎨 variables.css
-
-Chứa các biến CSS toàn cục (custom properties) định nghĩa giao diện chung: màu, font, khoảng cách, bo góc,…
-
-Nhiệm vụ chính:
-
-Đặt biến màu (--primary, --secondary, --bg, --text)
-
-Font chữ, kích thước chữ
-
-Bo góc, khoảng cách, animation speed
-
-Dễ dàng đổi theme (light/dark)
-
-Ví dụ nội dung:
+/* variables.css - Biến CSS toàn cục */
 
 :root {
-  /* 🎨 Color palette */
+  /* Màu sắc */
   --color-primary: #007bff;
   --color-secondary: #6c757d;
   --color-success: #28a745;
   --color-danger: #dc3545;
 
-  /* 🌙 Dark mode */
+  /* Dark mode */
   --color-bg: #1e1e1e;
   --color-text: #f5f5f5;
 
-  /* 🧩 Typography */
+  /* Typography */
   --font-family: "Inter", sans-serif;
   --font-size-base: 16px;
   --font-size-title: 20px;
 
-  /* 📏 Layout */
+  /* Layout */
   --radius: 8px;
   --padding: 12px;
   --transition: 0.3s ease;
 }
-
-
-Gợi ý mở rộng:
-
-Thêm theme switch (light/dark) bằng cách override biến trong class .dark-mode.
-
-Dùng chung với Tailwind hoặc CSS Module vẫn được (vì chỉ là layer nền).
-*/

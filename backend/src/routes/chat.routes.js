@@ -1,11 +1,20 @@
 // chat.routes.js
+// Định nghĩa các route liên quan đến tin nhắn (trong phòng và chat riêng tư)
+const express = require("express");
+const router = express.Router();
+const verifyToken = require("../middlewares/auth.middleware");
+const chatController = require("../controllers/chat.controller");
 
-// Giao tiếp qua tin nhắn.
+// Tất cả route đều yêu cầu đăng nhập
+router.use(verifyToken);
 
-// Chức năng chính:
+// Lấy lịch sử chat của phòng
+router.get("/room/:roomId", chatController.getRoomChat);
 
-// GET /:roomId – lấy lịch sử chat của phòng.
+// Lấy lịch sử chat riêng
+router.get("/private/:userId", chatController.getPrivateChat);
 
-// POST /send – gửi tin nhắn mới.
+// Đánh dấu tin nhắn đã đọc
+router.post("/read/:messageId", chatController.markAsRead);
 
-// DELETE /:msgId – xóa tin nhắn (nếu được phép).
+module.exports = router;

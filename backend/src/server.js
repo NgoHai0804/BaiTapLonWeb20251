@@ -1,23 +1,28 @@
-// server.js
+// server.js - entry point của server
 
-// Điểm khởi động chính của server
+const http = require("http");
+const app = require("./app");
+const connectDB = require("./config/db");
+const initSocket = require("./sockets");
 
-// Nhiệm vụ:
+const PORT = process.env.PORT || 3000;
 
-// Import app
+const startServer = async () => {
+  try {
+    console.log("🔄 Đang kết nối đến MongoDB...");
+    await connectDB();
+    
+    const server = http.createServer(app);
+    const io = initSocket(server);
 
-// Tạo HTTP server
+    server.listen(PORT, () => {
+      console.log(`🚀 Server đang chạy trên cổng ${PORT}`);
+      console.log(`📡 Socket.IO đã được khởi tạo`);
+    });
+  } catch (error) {
+    console.error("❌ Lỗi khởi động server:", error.message);
+    process.exit(1);
+  }
+};
 
-// Gắn Socket.IO vào HTTP server
-
-// Lắng nghe cổng (process.env.PORT)
-
-// Log trạng thái khi server khởi động thành công
-
-
-const app = require('./app');
-const PORT = process.env.PORT || 5000;
-
-app.listen(PORT, () => {
-  console.log(`🚀 Server is running on port ${PORT}`);
-});
+startServer();

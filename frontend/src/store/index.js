@@ -1,22 +1,18 @@
-// 📘 index.js
+import { configureStore } from '@reduxjs/toolkit'
+import userReducer from './userSlice'
+import gameReducer from './gameSlice'
+import roomReducer from './roomSlice'
+import chatReducer from './chatSlice'
+import notificationReducer from './notificationSlice'
 
-// Dùng configureStore() từ Redux Toolkit.
+const store = configureStore({
+    reducer: {
+        user: userReducer,
+        game: gameReducer,
+        room: roomReducer,
+        chat: chatReducer,
+        notification: notificationReducer,
+    },
+})
 
-// Import tất cả các slice (userSlice, roomSlice, …).
-
-// Xuất store và các kiểu (RootState, AppDispatch nếu dùng TS).
-
-// import { configureStore } from '@reduxjs/toolkit';
-// import userReducer from './userSlice';
-// import roomReducer from './roomSlice';
-// import chatReducer from './chatSlice';
-// import gameReducer from './gameSlice';
-
-// export const store = configureStore({
-//   reducer: {
-//     user: userReducer,
-//     room: roomReducer,
-//     chat: chatReducer,
-//     game: gameReducer,
-//   },
-// });
+export default store

@@ -1,15 +1,18 @@
+// models/index.js
+// File tập hợp và export tất cả các model để dễ dàng import
+
 const User = require('./user.model');
-const Friendship = require('./friendship.model');
+const Friend = require('./friend.model');
 const Room = require('./room.model');
-const Game = require('./game.model');
-const ChatMessage = require('./chat.model');
+const GameCaro = require('./gameCaro.model');
+const Message = require('./message.model');
 const Notification = require('./notification.model');
 
 module.exports = {
   User,
-  Friendship,
+  Friend,
   Room,
-  Game,
-  ChatMessage,
+  GameCaro,
+  Message,
   Notification
 };

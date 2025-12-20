@@ -1,28 +1,57 @@
-// userApi.js
+import apiClient from './apiClient';
 
-// Xử lý mọi yêu cầu liên quan đến người dùng: đăng ký, đăng nhập, hồ sơ cá nhân.
+export const userApi = {
+  getProfile: async () => {
+    const response = await apiClient.get('/api/users/profile');
+    // Backend trả về { success: true, message, data }
+    return response.data.data || response.data;
+  },
 
-// Nhiệm vụ:
+  updateProfile: async (data) => {
+    const response = await apiClient.put('/api/users/profile', data);
+    // Backend trả về { success: true, message, data }
+    return response.data.data || response.data;
+  },
 
-// Gửi request đăng ký (POST /auth/register).
+  changePassword: async (data) => {
+    try {
+      const response = await apiClient.post('/api/users/change-password', data);
+      return response.data.data || response.data;
+    } catch (error) {
+      // Trích xuất thông báo lỗi từ response
+      const errorMessage = error.response?.data?.message || error.message || 'Đổi mật khẩu thất bại';
+      throw new Error(errorMessage);
+    }
+  },
 
-// Gửi request đăng nhập (POST /auth/login).
+  getLeaderboard: async (gameId = 'caro') => {
+    const response = await apiClient.get(`/api/users/leaderboard?gameId=${gameId}`);
+    // Backend trả về { success: true, message, data }
+    const data = response.data.data || response.data;
+    // Đảm bảo luôn trả về array
+    return Array.isArray(data) ? data : [];
+  },
 
-// Lấy thông tin người dùng (GET /user/profile).
+  getUserProfile: async (userId) => {
+    const response = await apiClient.get(`/api/users/profile/${userId}`);
+    return response.data.data || response.data;
+  },
 
-// Cập nhật thông tin hoặc avatar (PUT /user/profile).
+  // API lịch sử game
+  getGameHistory: async (limit = 20, skip = 0) => {
+    const response = await apiClient.get(`/api/users/game-history?limit=${limit}&skip=${skip}`);
+    return response.data.data || response.data;
+  },
 
-// Sử dụng:
+  getUserGameHistory: async (userId, limit = 20, skip = 0) => {
+    const response = await apiClient.get(`/api/users/game-history/${userId}?limit=${limit}&skip=${skip}`);
+    return response.data.data || response.data;
+  },
 
-// const res = await userApi.login({ email, password });
+  getGameDetail: async (gameId) => {
+    const response = await apiClient.get(`/api/users/game/${gameId}`);
+    return response.data.data || response.data;
+  },
+};
 
-
-// Gợi ý cấu trúc:
-
-// userApi = {
-//   login(data),
-//   register(data),
-//   getProfile(),
-//   updateProfile(data),
-//   changePassword(data)
-// }
+export default userApi;

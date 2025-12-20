@@ -1,13 +1,18 @@
-// error.middleware.js
+// error.middleware.js - xử lý lỗi
+const logger = require("../utils/logger");
 
-// Xử lý toàn bộ lỗi phát sinh trong ứng dụng.
+module.exports = (err, req, res, next) => {
+  const statusCode = err.statusCode || 500;
+  const message = err.message || "Internal Server Error";
 
-// Chức năng chính:
+  logger.error("[%s] %s - %s", req.method, req.originalUrl, message);
+  if (process.env.NODE_ENV === "development" && err.stack) {
+    console.error(err.stack);
+  }
 
-// Bắt mọi lỗi (từ controller, service, hoặc hệ thống).
-
-// Gửi response thống nhất: { status, message, stack (dev) }.
-
-// Log lỗi ra console hoặc file log.
-
-// Đảm bảo server không crash khi lỗi xảy ra.
+  res.status(statusCode).json({
+    status: "error",
+    message,
+    ...(process.env.NODE_ENV === "development" ? { stack: err.stack } : {}),
+  });
+};

@@ -1,113 +1,140 @@
-// user.controller.js
+// user.controller.js - xử lý request thông tin người dùng
 
-// Quản lý thông tin người dùng và hồ sơ cá nhân.
+const response = require("../utils/response");
+const userService = require("../services/user.service");
+const gameCaroService = require("../services/gameCaro.service");
+const logger = require("../utils/logger");
 
-// Chức năng:
+// Lấy profile của chính người dùng đang đăng nhập
+async function getProfile(req, res) {
+  try {
+    const user = await userService.getUserProfileFull(req.user._id);
 
-// Lấy thông tin chi tiết người dùng theo ID hoặc token.
+    if (!user) return response.error(res, "Không tìm thấy người dùng", 404);
 
-// Cập nhật thông tin cá nhân, avatar.
-
-// Cung cấp dữ liệu cho leaderboard (nếu có).
-
-const User = require("../models/user.model");
-const bcrypt = require("bcrypt");
-
-function checkData(value, lengthMin, lengthMax) {
-  if (!value || value.length < lengthMin || value.length > lengthMax) {
-    return false;
+    return response.success(res, user, "Lấy thông tin profile thành công");
+  } catch (err) {
+    logger.error(`getProfile error: ${err}`);
+    return response.error(res, err.message, 500);
   }
-
-  const specialCharRegex = /[^a-zA-Z0-9_]/;
-  if (specialCharRegex.test(value)) {
-    return false;
-  }
-
-  return true;
 }
 
-// Lấy thông tin --> Dưa trên JWT token
-exports.getProfile = async (req, res) => {
+// Cập nhật profile
+async function updateProfile(req, res) {
   try {
-    const user = await User.findById(req.user.id).select("-passwordHash"); // Loại bỏ trường passwordHash
+    const updatedUser = await userService.updateUserProfile(req.user._id, req.body);
 
-    if (!user)
-      return res
-        .status(404)
-        .json({ success: false, message: "User not found" });
+    if (!updatedUser)
+      return response.error(res, "Cập nhật thất bại", 400);
 
-    res.json({ success: true, user });
+    return response.success(res, updatedUser, "Cập nhật profile thành công");
   } catch (err) {
-    console.error("getProfile error:", err);
-    res.status(500).json({ success: false, message: "Server error" });
+    logger.error(`updateProfile error: ${err}`);
+    return response.error(res, err.message, 400);
   }
-};
+}
 
-// Cập nhật thông tin cá nhân
-exports.updateProfile = async (req, res) => {
+// Lấy profile của một user khác
+async function getUserProfile(req, res) {
   try {
-    const { nickname, avatarUrl, password } = req.body;
-    const updateData = {};
-    if (avatarUrl) updateData.avatarUrl = avatarUrl;
+    const { userId } = req.params;
+    const user = await userService.getUserProfile(userId);
 
-    if (!checkData(nickname, 5, 15)) {
-      return res.status(400).json({
-        success: false,
-        message:
-          "Nickname is not valid. Length must be between 5 and 15 characters.",
-      });
-    } else {
-      updateData.nickname = nickname;
-    }
+    if (!user) return response.error(res, "Không tìm thấy người dùng", 404);
 
-    const existingNickname = await User.findOne({ nickname });
-    if (existingNickname) {
-      return res.status(400).json({
-        success: false,
-        message: "Nickname already exists.",
-      }); // nick name đã tồ tại
-    }
-
-    if (!checkData(password, 8, 20)) {
-      return res.status(400).json({
-        success: false,
-        message:
-          "Password is not valid. Length must be between 5 and 15 characters.",
-      });
-    } else {
-      const salt = await bcrypt.genSalt(10);
-      updateData.passwordHash = await bcrypt.hash(password, salt);
-    }
-
-    const user = await User.findByIdAndUpdate(req.user.id, updateData, {
-      new: true,
-    }).select("-passwordHash");
-    res.json({ success: true, user });
+    return response.success(res, user, "Lấy thông tin người dùng thành công");
   } catch (err) {
-    res.status(500).json({ success: false, message: err.message });
+    logger.error(`getUserProfile error: ${err}`);
+    return response.error(res, err.message, 500);
   }
-};
+}
 
-// Lấy dữ liệu cho leaderboard
-exports.getLeaderboard = async (req, res) => {
+// Lấy bảng xếp hạng
+async function getLeaderboard(req, res) {
   try {
-    const { gameId = "caro" } = req.query;
-
-    const users = await User.find(
-      { "gameStats.gameId": gameId },
-      {
-        username: 1,
-        nickname: 1,
-        avatarUrl: 1,
-        "gameStats.$": 1,
-      }
-    )
-      .sort({ "gameStats.score": -1 })
-      .limit(20);
-
-    res.json({ success: true, users });
+    const users = await userService.getLeaderboard(req.query.gameId);
+    return response.success(res, users, "Get leaderboard success");
   } catch (err) {
-    console.error("❌ getLeaderboard error:", err);
-    res.status(500).json({ success: false, message: "Server error" });
+    logger.error(`getLeaderboard error: ${err}`);
+    return response.error(res, err.message, 500);
   }
+}
+
+// Đổi mật khẩu
+async function changePassword(req, res) {
+  try {
+    const result = await userService.changePassword(req.user._id, req.body);
+    return response.success(res, result, result.message || "Đổi mật khẩu thành công");
+  } catch (err) {
+    logger.error(`changePassword error: ${err}`);
+    return response.error(res, err.message, 400);
+  }
+}
+
+// Lấy lịch sử chơi của người dùng
+async function getGameHistory(req, res) {
+  try {
+    const userId = req.user._id;
+    const limit = parseInt(req.query.limit) || 20;
+    const skip = parseInt(req.query.skip) || 0;
+
+    const games = await gameCaroService.getUserGameHistory(userId, { limit, skip });
+    const total = await gameCaroService.getUserGameCount(userId);
+
+    return response.success(res, {
+      games,
+      total,
+      limit,
+      skip
+    }, "Lấy lịch sử chơi thành công");
+  } catch (err) {
+    logger.error(`getGameHistory error: ${err}`);
+    return response.error(res, err.message, 500);
+  }
+}
+
+// Lấy lịch sử chơi của một user khác
+async function getUserGameHistory(req, res) {
+  try {
+    const { userId } = req.params;
+    const limit = parseInt(req.query.limit) || 20;
+    const skip = parseInt(req.query.skip) || 0;
+
+    const games = await gameCaroService.getUserGameHistory(userId, { limit, skip });
+    const total = await gameCaroService.getUserGameCount(userId);
+
+    return response.success(res, {
+      games,
+      total,
+      limit,
+      skip
+    }, "Lấy lịch sử chơi thành công");
+  } catch (err) {
+    logger.error(`getUserGameHistory error: ${err}`);
+    return response.error(res, err.message, 500);
+  }
+}
+
+// Lấy chi tiết một game theo ID
+async function getGameDetail(req, res) {
+  try {
+    const { gameId } = req.params;
+    const game = await gameCaroService.getGameById(gameId);
+
+    return response.success(res, game, "Lấy chi tiết game thành công");
+  } catch (err) {
+    logger.error(`getGameDetail error: ${err}`);
+    return response.error(res, err.message, 500);
+  }
+}
+
+module.exports = {
+  getProfile,
+  getUserProfile,
+  updateProfile,
+  getLeaderboard,
+  changePassword,
+  getGameHistory,
+  getUserGameHistory,
+  getGameDetail,
 };

@@ -1,16 +1,4 @@
-/*🧩 components.css
-
-Chứa class tái sử dụng (utility / helper CSS), dành cho layout hoặc component nhỏ không cần file riêng.
-
-Nhiệm vụ chính:
-
-Các class tiện ích như .flex-center, .btn-primary, .card, .text-muted, .hidden.
-
-Dùng trực tiếp trong JSX mà không cần tạo file riêng.
-
-Giảm trùng lặp CSS giữa nhiều component nhỏ (Popup, Button, Modal…).
-
-Ví dụ nội dung:
+/* components.css - Class tiện ích tái sử dụng */
 
 /* Layout utilities */
 .flex-center {
@@ -19,7 +7,8 @@ Ví dụ nội dung:
   align-items: center;
 }
 
-.hidden {
+/* .hidden đã có sẵn trong Tailwind, dùng .hide-custom nếu cần tùy chỉnh */
+.hide-custom {
   display: none !important;
 }
 
@@ -53,16 +42,25 @@ Ví dụ nội dung:
   text-align: center;
 }
 
+/* Animation nhấp nháy cho ô thắng */
+@keyframes winningCellBlink {
+  0%, 100% {
+    border-color: #22c55e;
+    box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.7);
+  }
+  50% {
+    border-color: #16a34a;
+    box-shadow: 0 0 0 4px rgba(34, 197, 94, 0.3);
+  }
+}
 
-Gợi ý mở rộng:
+.winning-cell {
+  border: 2px solid #22c55e !important;
+  animation: winningCellBlink 0.6s ease-in-out 2;
+  animation-fill-mode: forwards;
+}
 
-Chia nhóm nhỏ như:
-
-buttons.css
-
-layout.css
-
-animations.css
-nếu project lớn dần.
-
-Kết hợp Tailwind hoặc SCSS modules nếu muốn tiện hơn khi mở rộng theme.*/
+.winning-cell-final {
+  border: 2px solid #22c55e !important;
+  box-shadow: 0 0 0 2px rgba(34, 197, 94, 0.3);
+}
