@@ -1,26 +1,23 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useSelector, useDispatch } from 'react-redux';
 import { toast } from 'react-toastify';
 import { gameSocket } from '../../services/socket/gameSocket';
 import { useGameState } from '../../hooks/useGameState';
 import { useAuth } from '../../hooks/useAuth';
-import { useCountdown } from '../../hooks/useCountdown';
 import { useGameRoomSetup } from '../../hooks/useGameRoomSetup';
 import { useGameRoomLobby } from '../../hooks/useGameRoomLobby';
 import { useGameRoomPlaying } from '../../hooks/useGameRoomPlaying';
 import { useGameRoomEnd } from '../../hooks/useGameRoomEnd';
-import { setRoom, resetGame, setMove } from '../../store/gameSlice';
+import { setRoom } from '../../store/gameSlice';
 import { updateRoom, clearCurrentRoom } from '../../store/roomSlice';
 import { clearGame } from '../../store/gameSlice';
 import GameBoard from '../../components/GameBoard/GameBoard';
-import PlayerList from '../../components/PlayerList/PlayerList';
-import PasswordModal from '../../components/PasswordModal/PasswordModal';
-import DrawRequestModal from '../../components/DrawRequestModal/DrawRequestModal';
-import SurrenderModal from '../../components/SurrenderModal/SurrenderModal';
-import RoomSettingsModal from '../../components/RoomSettingsModal/RoomSettingsModal';
-import ChatBox from '../../components/ChatBox/ChatBox';
-import { ROOM_STATUS, TIME_LIMIT } from '../../utils/constants';
+import GameSidebar from '../../components/GameSidebar/GameSidebar';
+import GameRoomHeader from '../../components/GameRoom/GameRoomHeader';
+import GameRoomControls from '../../components/GameRoom/GameRoomControls';
+import GameRoomModals from '../../components/GameRoom/GameRoomModals';
+import { ROOM_STATUS } from '../../utils/constants';
 
 const GameRoom = () => {
   const { id: roomId } = useParams();
@@ -29,17 +26,17 @@ const GameRoom = () => {
   const { user } = useAuth();
   const { currentRoom } = useSelector((state) => state.room);
   const { board, isGameOver, currentPlayerIndex, players, history } = useGameState();
+  const gameBoardRef = useRef(null);
+  const sidebarRef = useRef(null);
+  const [boardHeight, setBoardHeight] = useState(null);
+  const [isDesktop, setIsDesktop] = useState(window.innerWidth >= 768);
   
-  // Kiểm tra roomId khi component render
   useEffect(() => {
-    console.log('Component GameRoom - roomId từ useParams:', roomId);
     if (!roomId) {
-      console.warn('Không có roomId trong URL, đang chuyển hướng đến lobby');
       navigate('/lobby');
     }
   }, [roomId, navigate]);
 
-  // Hook: Setup - xử lý join room, password, reconnect
   const {
     roomInfo,
     hasJoined,
@@ -55,15 +52,18 @@ const GameRoom = () => {
     handlePasswordCancel,
   } = useGameRoomSetup(roomId);
 
-  // Hook: Lobby - xử lý ready, start game, settings
+  const handlePlayerKickedRef = useRef(null);
   const {
     handleReady,
     handleStartGame,
     handleSaveRoomSettings,
     setupLobbyListeners,
-  } = useGameRoomLobby(roomId, currentRoom);
+  } = useGameRoomLobby(roomId, currentRoom, (data) => {
+    if (handlePlayerKickedRef.current) {
+      handlePlayerKickedRef.current(data);
+    }
+  });
 
-  // Hook: Playing - xử lý moves, timer, draw, surrender
   const {
     gameStartTime,
     pingTimeoutRemaining,
@@ -83,9 +83,39 @@ const GameRoom = () => {
     setupPlayingListeners,
     stopPingInterval,
     stopTurnTimer,
+    gameStateReceived,
+    setGameStateReceived,
   } = useGameRoomPlaying(roomId, hasJoined, currentRoom, setPlayerMarks, setTurnTimeLimit, setFirstTurn);
 
-  // Hook: End - xử lý game end
+  // Tự động fetch game state khi quay lại phòng đang chơi
+  useEffect(() => {
+    if (!roomId || !hasJoined || !currentRoom) return;
+
+    const isPlaying = currentRoom.status === ROOM_STATUS.PLAYING;
+    
+    if (isPlaying && !gameStateReceived) {
+      setGameStateReceived(false);
+      const timeoutId = setTimeout(() => {
+        gameSocket.getGameState(roomId);
+      }, 500);
+      return () => clearTimeout(timeoutId);
+    } else if (!isPlaying) {
+      setGameStateReceived(true);
+    }
+  }, [roomId, hasJoined, currentRoom?.status, gameStateReceived, setGameStateReceived]);
+
+  const handlePlayerKicked = useCallback((data) => {
+    stopPingInterval();
+    stopTurnTimer();
+    dispatch(clearCurrentRoom());
+    dispatch(clearGame());
+    navigate('/lobby', { state: { fromGameRoom: true, kicked: true } });
+  }, [navigate, dispatch, stopPingInterval, stopTurnTimer]);
+
+  useEffect(() => {
+    handlePlayerKickedRef.current = handlePlayerKicked;
+  }, [handlePlayerKicked]);
+
   const {
     gameResult,
     gameResultMessage,
@@ -95,17 +125,15 @@ const GameRoom = () => {
   } = useGameRoomEnd(stopPingInterval, stopTurnTimer);
 
   const [showRoomSettingsModal, setShowRoomSettingsModal] = useState(false);
+  const [showLeaveRoomModal, setShowLeaveRoomModal] = useState(false);
 
-  // Setup listeners cho lobby
   useEffect(() => {
     const cleanup = setupLobbyListeners();
     return cleanup;
   }, [setupLobbyListeners]);
 
-  // Setup listeners cho playing và end
   useEffect(() => {
     const onGameStart = (data) => {
-      // Reset flags khi bắt đầu game mới
       resetGameEndFlags();
     };
 
@@ -121,18 +149,22 @@ const GameRoom = () => {
     };
   }, [setupPlayingListeners, setupGameEndListener, handleGameEnd, resetGameEndFlags, setPlayerMarks, setTurnTimeLimit, setFirstTurn]);
 
-  // Xử lý rời phòng
   const handleLeaveRoom = useCallback(() => {
-    if (window.confirm('Bạn có chắc muốn rời phòng?')) {
-      stopPingInterval();
-      gameSocket.leaveRoom(roomId);
-      dispatch(clearCurrentRoom());
-      dispatch(clearGame());
-      navigate('/lobby', { state: { fromGameRoom: true } });
-    }
+    setShowLeaveRoomModal(true);
+  }, []);
+
+  const handleConfirmLeaveRoom = useCallback(() => {
+    stopPingInterval();
+    gameSocket.leaveRoom(roomId);
+    dispatch(clearCurrentRoom());
+    dispatch(clearGame());
+    navigate('/lobby', { state: { fromGameRoom: true } });
   }, [roomId, navigate, dispatch, stopPingInterval]);
 
-  // Tính toán các giá trị UI
+  const handleCancelLeaveRoom = useCallback(() => {
+    setShowLeaveRoomModal(false);
+  }, []);
+
   const userId = user?.id || user?._id;
   const hostIdMatch = currentRoom?.hostId?.toString() === userId?.toString();
   const player = currentRoom?.players?.find(p => 
@@ -143,23 +175,54 @@ const GameRoom = () => {
   const currentPlayer = players?.[currentPlayerIndex];
   const isMyTurn = currentPlayer?.userId?.toString() === userId?.toString();
 
-  // Timer cho mỗi lượt đi (legacy, có thể dùng turnTimeRemaining từ hook)
-  const { timeLeft, start: startTimer, reset: resetTimer } = useCountdown(TIME_LIMIT, () => {
-    if (isPlaying && isMyTurn && !isGameOver) {
-      toast.warning('Hết thời gian! Lượt của bạn đã kết thúc.');
-    }
-  });
+  useEffect(() => {
+    const handleResize = () => {
+      setIsDesktop(window.innerWidth >= 768);
+    };
+    
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   useEffect(() => {
-    if (isPlaying && isMyTurn && !isGameOver) {
-      resetTimer(TIME_LIMIT);
-      startTimer(TIME_LIMIT);
-    } else {
-      resetTimer(TIME_LIMIT);
-    }
-  }, [isMyTurn, isPlaying, isGameOver, resetTimer, startTimer]);
+    const updateBoardHeight = () => {
+      if (gameBoardRef.current && isDesktop) {
+        const gameBoardElement = gameBoardRef.current.querySelector('.max-w-2xl');
+        if (gameBoardElement) {
+          const rect = gameBoardElement.getBoundingClientRect();
+          const height = rect.height;
+          if (height > 0 && Math.abs(height - (boardHeight || 0)) > 1) {
+            setBoardHeight(height);
+          }
+        } else {
+          const height = gameBoardRef.current.offsetHeight;
+          if (height > 0 && Math.abs(height - (boardHeight || 0)) > 1) {
+            setBoardHeight(height);
+          }
+        }
+      } else {
+        setBoardHeight(null);
+      }
+    };
 
-  // Hiển thị loading khi đang join
+    const timeoutId1 = setTimeout(updateBoardHeight, 100);
+    const timeoutId2 = setTimeout(updateBoardHeight, 500);
+    
+    const resizeObserver = new ResizeObserver(() => {
+      updateBoardHeight();
+    });
+    
+    if (gameBoardRef.current) {
+      resizeObserver.observe(gameBoardRef.current);
+    }
+
+    return () => {
+      resizeObserver.disconnect();
+      clearTimeout(timeoutId1);
+      clearTimeout(timeoutId2);
+    };
+  }, [board, isGameOver, isDesktop, boardHeight]);
+
   if (isJoining && !currentRoom && !roomInfo && !showPasswordModal) {
     return (
       <div className="min-h-screen bg-gray-100 p-4 flex items-center justify-center">
@@ -173,263 +236,111 @@ const GameRoom = () => {
   return (
     <div className="min-h-screen bg-gray-100 p-4">
       <div className="max-w-7xl mx-auto">
-        {/* Password Modal */}
-        <PasswordModal
-          isOpen={showPasswordModal && !!roomId}
-          onClose={handlePasswordCancel}
-          onSubmit={handlePasswordSubmit}
-          roomName={roomInfo?.name || 'Phòng chơi'}
+        <GameRoomModals
+          showPasswordModal={showPasswordModal}
           roomId={roomId}
+          roomInfo={roomInfo}
+          handlePasswordSubmit={handlePasswordSubmit}
+          handlePasswordCancel={handlePasswordCancel}
+          showDrawModal={showDrawModal}
+          drawRequestInfo={drawRequestInfo}
+          user={user}
+          handleDrawAccept={handleDrawAccept}
+          handleDrawReject={handleDrawReject}
+          handleDrawCancel={handleDrawCancel}
+          showSurrenderModal={showSurrenderModal}
+          handleCancelSurrender={handleCancelSurrender}
+          handleConfirmSurrender={handleConfirmSurrender}
+          showRoomSettingsModal={showRoomSettingsModal}
+          setShowRoomSettingsModal={setShowRoomSettingsModal}
+          handleSaveRoomSettings={handleSaveRoomSettings}
+          currentRoom={currentRoom}
+          playerMarks={playerMarks}
+          turnTimeLimit={turnTimeLimit}
+          firstTurn={firstTurn}
+          showLeaveRoomModal={showLeaveRoomModal}
+          handleCancelLeaveRoom={handleCancelLeaveRoom}
+          handleConfirmLeaveRoom={handleConfirmLeaveRoom}
+          isPlaying={isPlaying}
         />
 
-        {/* Draw Request Modal */}
-        <DrawRequestModal
-          isOpen={showDrawModal && !!drawRequestInfo}
-          onClose={() => {
-            // Modal sẽ được đóng bởi handlers
-          }}
-          onAccept={handleDrawAccept}
-          onReject={handleDrawReject}
-          onCancel={handleDrawCancel}
-          requesterUsername={drawRequestInfo?.requesterUsername}
-          requesterNickname={drawRequestInfo?.requesterNickname}
-          isRequester={
-            drawRequestInfo && (user?.id || user?._id)?.toString() === drawRequestInfo.requesterId?.toString()
-          }
-        />
-
-        {/* Surrender Modal */}
-        <SurrenderModal
-          isOpen={showSurrenderModal}
-          onClose={handleCancelSurrender}
-          onConfirm={handleConfirmSurrender}
-        />
-
-        {/* Room Settings Modal */}
-        <RoomSettingsModal
-          isOpen={showRoomSettingsModal}
-          onClose={() => setShowRoomSettingsModal(false)}
-          onSave={(settings) => {
-            handleSaveRoomSettings(settings);
-            setShowRoomSettingsModal(false);
-          }}
-          players={currentRoom?.players || []}
-          currentPlayerMarks={playerMarks}
-          currentTurnTimeLimit={turnTimeLimit}
-          currentFirstTurn={firstTurn}
-        />
-
-        {/* Header */}
-        <div className="bg-white rounded-lg shadow p-4 mb-4">
-          <div className="flex items-center justify-between">
-            <div className="flex-1">
-              <div className="flex items-center gap-4">
-                <div>
-                  <h1 className="text-2xl font-bold text-gray-800">
-                    {currentRoom?.name || roomInfo?.name || 'Phòng chơi'}
-                  </h1>
-                  <div className="flex items-center gap-4 mt-1 text-sm text-gray-600">
-                    {currentRoom?.passwordHash && (
-                      <span className="flex items-center gap-1">
-                        🔒 Có mật khẩu
-                      </span>
-                    )}
-                    <span className="flex items-center gap-1">
-                      ⏱️ Thời gian mỗi lượt: {turnTimeLimit}s
-                    </span>
-                  </div>
-                </div>
-                {gameResult ? (
-                  /* Hiển thị kết quả game */
-                  <div className={`flex items-center justify-center px-4 py-2 rounded-lg border-2 ${
-                    gameResult === 'win' 
-                      ? 'bg-green-100 border-green-400' 
-                      : gameResult === 'lose' 
-                        ? 'bg-red-100 border-red-400' 
-                        : 'bg-yellow-100 border-yellow-400'
-                  }`}>
-                    <span className={`text-xl font-bold ${
-                      gameResult === 'win' 
-                        ? 'text-green-600' 
-                        : gameResult === 'lose' 
-                          ? 'text-red-600' 
-                          : 'text-yellow-600'
-                    }`}>
-                      {gameResultMessage || (gameResult === 'win' ? 'Bạn thắng!' : gameResult === 'lose' ? 'Bạn thua!' : 'Hòa!')}
-                    </span>
-                  </div>
-                ) : isPlaying && gameStartTime && (
-                  <div className="flex items-center gap-6">
-                    {/* Thời gian đã chơi */}
-                    <div className="flex items-center gap-2 bg-blue-50 px-4 py-2 rounded-lg border-2 border-blue-200">
-                      <span className="text-sm font-medium text-blue-700">⏱️ Thời gian:</span>
-                      <span className="text-xl font-bold text-blue-600">{formatGameDuration()}</span>
-                    </div>
-                    {/* Thời gian còn lại */}
-                    {turnTimeRemaining !== null && (
-                      <div className={`flex items-center gap-2 px-4 py-2 rounded-lg border-2 ${
-                        turnTimeRemaining <= 10 
-                          ? 'bg-red-100 border-red-400 animate-blink-warning' 
-                          : turnTimeRemaining > turnTimeLimit * 0.5 
-                            ? 'bg-green-50 border-green-200' 
-                            : turnTimeRemaining > turnTimeLimit * 0.25 
-                              ? 'bg-yellow-50 border-yellow-200' 
-                              : 'bg-orange-50 border-orange-200'
-                      }`}>
-                        <span className={`text-sm font-medium ${
-                          turnTimeRemaining <= 10 
-                            ? 'text-red-700' 
-                            : turnTimeRemaining > turnTimeLimit * 0.5 
-                              ? 'text-green-700' 
-                              : turnTimeRemaining > turnTimeLimit * 0.25 
-                                ? 'text-yellow-700' 
-                                : 'text-orange-700'
-                        }`}>
-                          ⏳ Lượt đi:
-                        </span>
-                        <span className={`text-2xl font-bold ${
-                          turnTimeRemaining <= 10 
-                            ? 'text-red-600 animate-blink-warning' 
-                            : turnTimeRemaining > turnTimeLimit * 0.5 
-                              ? 'text-green-600' 
-                              : turnTimeRemaining > turnTimeLimit * 0.25 
-                                ? 'text-yellow-600' 
-                                : 'text-orange-600'
-                        }`}>
-                          {Math.max(0, turnTimeRemaining)}s
-                        </span>
-                      </div>
-                    )}
-                  </div>
-                )}
-              </div>
+        <div className="bg-white rounded-lg shadow p-3 sm:p-4 mb-4">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4">
+            <div className="flex-1 min-w-0">
+              <GameRoomHeader
+                currentRoom={currentRoom}
+                roomInfo={roomInfo}
+                turnTimeLimit={turnTimeLimit}
+                gameResult={gameResult}
+                gameResultMessage={gameResultMessage}
+                isPlaying={isPlaying}
+                gameStartTime={gameStartTime}
+                formatGameDuration={formatGameDuration}
+                turnTimeRemaining={turnTimeRemaining}
+              />
             </div>
-            <div className="flex items-center gap-2">
-              {/* Game Control Buttons */}
-              {!isPlaying && (
-                <>
-                  {(() => {
-                    if (!player) {
-                      console.warn('Không tìm thấy người chơi trong phòng cho nút ready:', { userId, roomId, players: currentRoom?.players });
-                      return (
-                        <button
-                          onClick={() => {
-                            toast.info('Đang kết nối lại với phòng...');
-                            gameSocket.joinRoom(roomId, '');
-                          }}
-                          className="px-4 py-2 bg-yellow-600 text-white rounded-lg hover:bg-yellow-700 transition-colors"
-                        >
-                          Kết nối lại
-                        </button>
-                      );
-                    }
-                    
-                    // Chủ phòng: hiển thị nút Chỉnh sửa và Bắt đầu game
-                    if (isHost) {
-                      const nonHostPlayers = currentRoom?.players?.filter(p => !p.isHost && !p.isDisconnected) || [];
-                      const allNonHostReady = nonHostPlayers.length > 0 && nonHostPlayers.every(p => p.isReady);
-                      const canStart = currentRoom?.players?.length >= 2 && allNonHostReady;
-                      
-                      return (
-                        <>
-                          <button
-                            onClick={() => setShowRoomSettingsModal(true)}
-                            className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors"
-                          >
-                            Chỉnh sửa
-                          </button>
-                          <button
-                            onClick={handleStartGame}
-                            disabled={!canStart}
-                            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                            title={!canStart ? (currentRoom?.players?.length < 2 ? 'Cần ít nhất 2 người chơi' : 'Tất cả người chơi (trừ chủ phòng) phải sẵn sàng') : 'Bắt đầu game'}
-                          >
-                            Bắt đầu game
-                          </button>
-                        </>
-                      );
-                    }
-                    
-                    // Non-host: hiển thị nút Sẵn sàng
-                    return (
-                      <button
-                        onClick={handleReady}
-                        className={`px-4 py-2 rounded-lg transition-colors ${
-                          player.isReady
-                            ? 'bg-yellow-600 text-white hover:bg-yellow-700'
-                            : 'bg-green-600 text-white hover:bg-green-700'
-                        }`}
-                      >
-                        {player.isReady ? 'Hủy sẵn sàng' : 'Sẵn sàng'}
-                      </button>
-                    );
-                  })()}
-                </>
-              )}
-              {isPlaying && !isGameOver && (
-                <>
-                  <button
-                    onClick={handleRequestDraw}
-                    className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors"
-                  >
-                    Xin hòa
-                  </button>
-                  <button
-                    onClick={handleSurrender}
-                    className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
-                  >
-                    Đầu hàng
-                  </button>
-                </>
-              )}
-              <button
-                onClick={handleLeaveRoom}
-                className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
-              >
-                Rời phòng
-              </button>
-            </div>
+            <GameRoomControls
+              isPlaying={isPlaying}
+              isGameOver={isGameOver}
+              isHost={isHost}
+              player={player}
+              currentRoom={currentRoom}
+              userId={userId}
+              roomId={roomId}
+              handleReady={handleReady}
+              handleStartGame={handleStartGame}
+              handleRequestDraw={handleRequestDraw}
+              handleSurrender={handleSurrender}
+              handleLeaveRoom={handleLeaveRoom}
+              setShowRoomSettingsModal={setShowRoomSettingsModal}
+            />
           </div>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-          {/* Game Board */}
-          <div className="lg:col-span-2">
-            <GameBoard onCellClick={handleCellClick} disabled={!isMyTurn || isGameOver} />
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3 sm:gap-4" style={{ minHeight: 0 }}>
+          <div 
+            className="md:col-span-2 order-1" 
+            style={{ 
+              minHeight: 0, 
+              display: 'flex', 
+              flexDirection: 'column',
+              ...(boardHeight && isDesktop ? { height: `${boardHeight}px`, maxHeight: `${boardHeight}px` } : {})
+            }}
+          >
+            <div 
+              ref={gameBoardRef}
+              className="flex-1 min-h-0 flex items-center justify-center"
+              style={{
+                ...(boardHeight && isDesktop ? { height: '100%', maxHeight: '100%', overflow: 'visible' } : {})
+              }}
+            >
+              <GameBoard 
+                onCellClick={handleCellClick} 
+                disabled={!isPlaying || !isMyTurn || isGameOver || !gameStateReceived} 
+              />
+            </div>
           </div>
 
-          {/* Sidebar */}
-          <div className="space-y-4">
-            <PlayerList playerMarks={playerMarks} />
-            
-            {/* Lịch sử nước đi */}
-            {isPlaying && (
-              <div className="bg-white rounded-lg shadow p-4">
-                <h3 className="text-lg font-semibold mb-2">Lịch sử nước đi</h3>
-                <div className="max-h-64 overflow-y-auto space-y-1">
-                  {history && history.length > 0 ? (
-                    history.map((move, index) => (
-                      <div
-                        key={index}
-                        className="p-2 rounded text-sm bg-gray-50"
-                      >
-                        <span className="font-semibold">#{index + 1}</span> - {move.mark} tại ({move.x}, {move.y})
-                        {(move.nickname || move.username) && (
-                          <span className="text-gray-500 ml-2">- {move.nickname || move.username}</span>
-                        )}
-                      </div>
-                    ))
-                  ) : (
-                    <p className="text-gray-500 text-sm">Chưa có nước đi nào</p>
-                  )}
-                </div>
-              </div>
-            )}
-            
-            {/* Chat Box */}
-            <ChatBox roomId={roomId} />
+          <div
+            ref={sidebarRef}
+            className="order-4 md:order-2 md:col-span-1"
+            style={{
+              ...(boardHeight && isDesktop ? { height: `${boardHeight}px`, maxHeight: `${boardHeight}px` } : {})
+            }}
+          >
+            <GameSidebar 
+              roomId={roomId} 
+              playerMarks={playerMarks} 
+              history={history}
+              currentRoom={currentRoom}
+              isHost={isHost}
+              isPlaying={isPlaying}
+            />
           </div>
         </div>
+
+
+
       </div>
     </div>
   );

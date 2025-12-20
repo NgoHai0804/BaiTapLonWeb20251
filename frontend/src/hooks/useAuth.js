@@ -11,7 +11,7 @@ export const useAuth = () => {
 
   const logout = () => {
     dispatch(logoutAction());
-    socketClient.forceDisconnect(); // Force disconnect để đóng tất cả socket thừa
+    socketClient.forceDisconnect();
     navigate('/auth/login');
   };
 

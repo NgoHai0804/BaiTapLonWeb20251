@@ -4,6 +4,7 @@ import { storage, STORAGE_KEYS } from '../utils/storage';
 const initialState = {
   user: storage.get(STORAGE_KEYS.USER, null),
   token: storage.get(STORAGE_KEYS.TOKEN, null),
+  refreshToken: storage.get(STORAGE_KEYS.REFRESH_TOKEN, null),
   isAuthenticated: !!storage.get(STORAGE_KEYS.TOKEN, null),
   loading: false,
   error: null,
@@ -21,11 +22,18 @@ const userSlice = createSlice({
       state.loading = false;
       state.user = action.payload.user;
       state.token = action.payload.token;
+      state.refreshToken = action.payload.refreshToken;
       state.isAuthenticated = true;
       state.error = null;
       
-      // Save to localStorage
       storage.set(STORAGE_KEYS.USER, action.payload.user);
+      storage.set(STORAGE_KEYS.TOKEN, action.payload.token);
+      if (action.payload.refreshToken) {
+        storage.set(STORAGE_KEYS.REFRESH_TOKEN, action.payload.refreshToken);
+      }
+    },
+    updateToken: (state, action) => {
+      state.token = action.payload.token;
       storage.set(STORAGE_KEYS.TOKEN, action.payload.token);
     },
     loginFailure: (state, action) => {
@@ -36,12 +44,14 @@ const userSlice = createSlice({
     logout: (state) => {
       state.user = null;
       state.token = null;
+      state.refreshToken = null;
       state.isAuthenticated = false;
       state.error = null;
       
-      // Clear localStorage
+      // Xóa localStorage
       storage.remove(STORAGE_KEYS.USER);
       storage.remove(STORAGE_KEYS.TOKEN);
+      storage.remove(STORAGE_KEYS.REFRESH_TOKEN);
     },
     updateProfile: (state, action) => {
       state.user = { ...state.user, ...action.payload };
@@ -53,5 +63,5 @@ const userSlice = createSlice({
   },
 });
 
-export const { loginStart, loginSuccess, loginFailure, logout, updateProfile, clearError } = userSlice.actions;
+export const { loginStart, loginSuccess, loginFailure, logout, updateProfile, clearError, updateToken } = userSlice.actions;
 export default userSlice.reducer;

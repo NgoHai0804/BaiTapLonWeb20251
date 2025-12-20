@@ -1,14 +1,13 @@
-// useGameRoomEnd.js
-// Hook xử lý logic khi game kết thúc
-// Bao gồm: xử lý kết quả game, hiển thị thông báo
+// useGameRoomEnd.js - Hook xử lý logic khi game kết thúc
 
 import { useRef, useState, useCallback } from 'react';
-import { useDispatch } from 'react-redux';
+import { useDispatch, useSelector } from 'react-redux';
 import { toast } from 'react-toastify';
 import { setWinner, setDraw } from '../store/gameSlice';
 import { playSound } from '../utils/soundManager';
 import { useAuth } from './useAuth';
 import { gameSocket } from '../services/socket/gameSocket';
+import { getWinningCells } from '../utils/checkWinner';
 
 export const useGameRoomEnd = (stopPingInterval, stopTurnTimer) => {
   const dispatch = useDispatch();
@@ -21,12 +20,20 @@ export const useGameRoomEnd = (stopPingInterval, stopTurnTimer) => {
 
   // Xử lý khi game kết thúc
   const handleGameEnd = useCallback((data) => {
-    // Kiểm tra xem đã xử lý game_end chưa để tránh hiển thị thông báo nhiều lần
+    // Tránh xử lý game_end nhiều lần
     if (gameEndProcessedRef.current) {
       if (data.result.winner) {
+        // Tính toán winningCells từ board và lastMove
+        const board = data.board || [];
+        const lastMove = data.lastMove;
+        let winningCells = [];
+        if (lastMove && board[lastMove.x] && board[lastMove.x][lastMove.y]) {
+          winningCells = getWinningCells(board, lastMove.x, lastMove.y);
+        }
         dispatch(setWinner({
           winner: data.result.winner,
           winnerMark: data.result.winnerMark,
+          winningCells: winningCells,
         }));
       } else {
         dispatch(setDraw());
@@ -47,9 +54,17 @@ export const useGameRoomEnd = (stopPingInterval, stopTurnTimer) => {
     let resultMessage = '';
     
     if (data.result.winner) {
+      // Tính toán winningCells từ board và lastMove
+      const board = data.board || [];
+      const lastMove = data.lastMove;
+      let winningCells = [];
+      if (lastMove && board[lastMove.x] && board[lastMove.x][lastMove.y]) {
+        winningCells = getWinningCells(board, lastMove.x, lastMove.y);
+      }
       dispatch(setWinner({
         winner: data.result.winner,
         winnerMark: data.result.winnerMark,
+        winningCells: winningCells,
       }));
       
       const winnerId = data.result.winner?.toString();
@@ -86,7 +101,7 @@ export const useGameRoomEnd = (stopPingInterval, stopTurnTimer) => {
       playSound('draw');
     }
     
-    // Set kết quả để hiển thị banner
+    // Đặt kết quả để hiển thị banner
     setGameResult(resultType);
     setGameResultMessage(resultMessage);
   }, [user, dispatch, stopPingInterval, stopTurnTimer]);

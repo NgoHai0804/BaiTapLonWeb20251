@@ -1,6 +1,5 @@
 // chat.routes.js
-// Giao tiếp qua tin nhắn.
-
+// Định nghĩa các route liên quan đến tin nhắn (trong phòng và chat riêng tư)
 const express = require("express");
 const router = express.Router();
 const verifyToken = require("../middlewares/auth.middleware");

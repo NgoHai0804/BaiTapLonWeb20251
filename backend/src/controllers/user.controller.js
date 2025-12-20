@@ -1,22 +1,18 @@
-// user.controller.js
-// Quản lý thông tin người dùng và hồ sơ cá nhân.
-// Chức năng:
-// - Lấy thông tin chi tiết người dùng theo ID hoặc token.
-// - Cập nhật thông tin cá nhân, avatar.
-// - Cung cấp dữ liệu cho leaderboard (nếu có).
+// user.controller.js - xử lý request thông tin người dùng
 
 const response = require("../utils/response");
 const userService = require("../services/user.service");
+const gameCaroService = require("../services/gameCaro.service");
 const logger = require("../utils/logger");
 
-// Lấy thông tin profile người dùng
+// Lấy profile của chính người dùng đang đăng nhập
 async function getProfile(req, res) {
   try {
-    const user = await userService.getUserProfile(req.user._id);
+    const user = await userService.getUserProfileFull(req.user._id);
 
-    if (!user) return response.error(res, "User not found", 404);
+    if (!user) return response.error(res, "Không tìm thấy người dùng", 404);
 
-    return response.success(res, user, "Get profile success");
+    return response.success(res, user, "Lấy thông tin profile thành công");
   } catch (err) {
     logger.error(`getProfile error: ${err}`);
     return response.error(res, err.message, 500);
@@ -29,31 +25,31 @@ async function updateProfile(req, res) {
     const updatedUser = await userService.updateUserProfile(req.user._id, req.body);
 
     if (!updatedUser)
-      return response.error(res, "Update failed", 400);
+      return response.error(res, "Cập nhật thất bại", 400);
 
-    return response.success(res, updatedUser, "Update profile success");
+    return response.success(res, updatedUser, "Cập nhật profile thành công");
   } catch (err) {
     logger.error(`updateProfile error: ${err}`);
     return response.error(res, err.message, 400);
   }
 }
 
-// Lấy thông tin profile của user khác
+// Lấy profile của một user khác
 async function getUserProfile(req, res) {
   try {
     const { userId } = req.params;
     const user = await userService.getUserProfile(userId);
 
-    if (!user) return response.error(res, "User not found", 404);
+    if (!user) return response.error(res, "Không tìm thấy người dùng", 404);
 
-    return response.success(res, user, "Get user profile success");
+    return response.success(res, user, "Lấy thông tin người dùng thành công");
   } catch (err) {
     logger.error(`getUserProfile error: ${err}`);
     return response.error(res, err.message, 500);
   }
 }
 
-// Lấy leaderboard
+// Lấy bảng xếp hạng
 async function getLeaderboard(req, res) {
   try {
     const users = await userService.getLeaderboard(req.query.gameId);
@@ -64,9 +60,81 @@ async function getLeaderboard(req, res) {
   }
 }
 
+// Đổi mật khẩu
+async function changePassword(req, res) {
+  try {
+    const result = await userService.changePassword(req.user._id, req.body);
+    return response.success(res, result, result.message || "Đổi mật khẩu thành công");
+  } catch (err) {
+    logger.error(`changePassword error: ${err}`);
+    return response.error(res, err.message, 400);
+  }
+}
+
+// Lấy lịch sử chơi của người dùng
+async function getGameHistory(req, res) {
+  try {
+    const userId = req.user._id;
+    const limit = parseInt(req.query.limit) || 20;
+    const skip = parseInt(req.query.skip) || 0;
+
+    const games = await gameCaroService.getUserGameHistory(userId, { limit, skip });
+    const total = await gameCaroService.getUserGameCount(userId);
+
+    return response.success(res, {
+      games,
+      total,
+      limit,
+      skip
+    }, "Lấy lịch sử chơi thành công");
+  } catch (err) {
+    logger.error(`getGameHistory error: ${err}`);
+    return response.error(res, err.message, 500);
+  }
+}
+
+// Lấy lịch sử chơi của một user khác
+async function getUserGameHistory(req, res) {
+  try {
+    const { userId } = req.params;
+    const limit = parseInt(req.query.limit) || 20;
+    const skip = parseInt(req.query.skip) || 0;
+
+    const games = await gameCaroService.getUserGameHistory(userId, { limit, skip });
+    const total = await gameCaroService.getUserGameCount(userId);
+
+    return response.success(res, {
+      games,
+      total,
+      limit,
+      skip
+    }, "Lấy lịch sử chơi thành công");
+  } catch (err) {
+    logger.error(`getUserGameHistory error: ${err}`);
+    return response.error(res, err.message, 500);
+  }
+}
+
+// Lấy chi tiết một game theo ID
+async function getGameDetail(req, res) {
+  try {
+    const { gameId } = req.params;
+    const game = await gameCaroService.getGameById(gameId);
+
+    return response.success(res, game, "Lấy chi tiết game thành công");
+  } catch (err) {
+    logger.error(`getGameDetail error: ${err}`);
+    return response.error(res, err.message, 500);
+  }
+}
+
 module.exports = {
   getProfile,
   getUserProfile,
   updateProfile,
   getLeaderboard,
+  changePassword,
+  getGameHistory,
+  getUserGameHistory,
+  getGameDetail,
 };

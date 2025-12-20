@@ -1,11 +1,10 @@
 // logger.js
-
-// Xử lý log hệ thống.
-
+// Utility xử lý log hệ thống sử dụng Winston
+// 
 // Chức năng:
-// Log thông tin, cảnh báo, lỗi ra console hoặc file.
-// Có thể dùng winston hoặc pino để quản lý log theo level.
-// Giúp debug và theo dõi trạng thái server.
+// - Log thông tin, cảnh báo, lỗi ra console và file
+// - Quản lý log theo level (info, warn, error)
+// - Giúp debug và theo dõi trạng thái server
 
 const { createLogger, transports, format } = require("winston");
 
@@ -18,7 +17,7 @@ const logger = createLogger({
     format.json()
   ),
   transports: [
-    // Ghi log ra console
+    // Ghi log ra console với màu sắc
     new transports.Console({
       format: format.combine(
         format.colorize(),
@@ -28,7 +27,7 @@ const logger = createLogger({
         )
       ),
     }),
-    // Ghi log lỗi ra file riêng (nếu muốn)
+    // Ghi log lỗi (error level) ra file riêng
     new transports.File({ filename: "logs/error.log", level: "error" }),
   ],
 });

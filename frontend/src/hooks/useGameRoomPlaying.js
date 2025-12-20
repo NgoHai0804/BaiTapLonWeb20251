@@ -1,6 +1,4 @@
-// useGameRoomPlaying.js
 // Hook xử lý logic khi đang chơi
-// Bao gồm: moves, timer, draw, surrender, ping
 
 import { useEffect, useState, useRef, useCallback } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
@@ -17,6 +15,8 @@ export const useGameRoomPlaying = (roomId, hasJoined, currentRoom, setPlayerMark
   const dispatch = useDispatch();
   const { user } = useAuth();
   const { board, isGameOver, currentPlayerIndex, players } = useSelector((state) => state.game);
+  const [gameStateReceived, setGameStateReceived] = useState(false);
+  const [isProcessingMove, setIsProcessingMove] = useState(false);
   
   const [gameStartTime, setGameStartTime] = useState(null);
   const [pingTimeoutRemaining, setPingTimeoutRemaining] = useState(30);
@@ -30,7 +30,7 @@ export const useGameRoomPlaying = (roomId, hasJoined, currentRoom, setPlayerMark
   const pingIntervalRef = useRef(null);
   const pingTimeoutRef = useRef(null);
 
-  // Bắt đầu gửi ping định kỳ
+  // Gửi ping định kỳ
   const startPingInterval = useCallback(() => {
     if (pingIntervalRef.current) {
       clearInterval(pingIntervalRef.current);
@@ -51,7 +51,7 @@ export const useGameRoomPlaying = (roomId, hasJoined, currentRoom, setPlayerMark
     }
   }, []);
 
-  // Hàm quản lý timer cho lượt chơi
+  // Bắt đầu timer cho lượt chơi
   const startTurnTimer = useCallback((serverTurnStartTime, timeLimit) => {
     if (turnTimerRef.current) {
       clearInterval(turnTimerRef.current);
@@ -90,20 +90,48 @@ export const useGameRoomPlaying = (roomId, hasJoined, currentRoom, setPlayerMark
 
   // Xử lý click vào ô cờ
   const handleCellClick = useCallback((x, y) => {
-    if (isGameOver) return;
-    
-    const currentPlayer = players?.[currentPlayerIndex];
-    const userId = user?.id || user?._id;
-    const playerUserId = currentPlayer?.userId?.toString();
-    const userStr = userId?.toString();
-    
-    if (!currentPlayer || playerUserId !== userStr) {
-      toast.warning('Chưa đến lượt bạn');
+    if (isGameOver) {
       return;
     }
-
-    gameSocket.makeMove(roomId, x, y);
-  }, [isGameOver, players, currentPlayerIndex, user, roomId]);
+    
+    if (isProcessingMove) {
+      toast.warning('Đang xử lý nước đi, vui lòng đợi...', {
+        position: "top-right",
+        autoClose: 1000,
+      });
+      return;
+    }
+    
+    if (!gameStateReceived) {
+      toast.warning('Đang tải trạng thái game, vui lòng đợi...', {
+        position: "top-right",
+        autoClose: 1000,
+      });
+      return;
+    }
+    
+    if (board && board[x] && board[x][y] !== null) {
+      toast.warning('Ô này đã có cờ', {
+        position: "top-right",
+        autoClose: 1000,
+      });
+      return;
+    }
+    
+    setIsProcessingMove(true);
+    
+    try {
+      gameSocket.makeMove(roomId, x, y);
+    } catch (error) {
+      console.error('Lỗi khi gọi gameSocket.makeMove:', error);
+      setIsProcessingMove(false);
+      toast.error('Lỗi khi gửi nước đi: ' + error.message);
+    }
+    
+    setTimeout(() => {
+      setIsProcessingMove(false);
+    }, 2000);
+  }, [isGameOver, isProcessingMove, gameStateReceived, roomId, board]);
 
   // Xử lý xin hòa
   const handleRequestDraw = useCallback(() => {
@@ -148,7 +176,7 @@ export const useGameRoomPlaying = (roomId, hasJoined, currentRoom, setPlayerMark
     return `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
   }, [gameStartTime]);
 
-  // Handle room pong
+  // Xử lý room pong
   const handleRoomPong = useCallback((data) => {
     if (data.timeRemaining !== undefined) {
       setPingTimeoutRemaining(data.timeRemaining / 1000);
@@ -158,15 +186,12 @@ export const useGameRoomPlaying = (roomId, hasJoined, currentRoom, setPlayerMark
   // Socket event handlers cho playing
   const setupPlayingListeners = useCallback((onGameStart, onGameEnd) => {
     const handleGameStart = (data) => {
-      console.log('Đã nhận sự kiện bắt đầu game:', data);
       dispatch(resetGame());
       dispatch(setRoom({ roomId, players: data.players }));
       dispatch(updateRoom(data.room));
       
-      // Cập nhật playerMarks, turnTimeLimit và firstTurn
       if (data.playerMarks && setPlayerMarks) {
         setPlayerMarks(data.playerMarks);
-        console.log('Dấu người chơi:', data.playerMarks);
       }
       if (data.turnTimeLimit && setTurnTimeLimit) {
         setTurnTimeLimit(data.turnTimeLimit);
@@ -182,9 +207,9 @@ export const useGameRoomPlaying = (roomId, hasJoined, currentRoom, setPlayerMark
           currentPlayerIndex: data.currentPlayerIndex !== undefined ? data.currentPlayerIndex : 0,
           history: data.history || [],
         }));
-        console.log('Game state đã được khởi tạo từ sự kiện game_start');
+        setGameStateReceived(true);
       } else {
-        console.log('Không có game state trong sự kiện game_start, đang tải lại...');
+        setGameStateReceived(false);
         setTimeout(() => {
           gameSocket.getGameState(roomId);
         }, 100);
@@ -209,6 +234,9 @@ export const useGameRoomPlaying = (roomId, hasJoined, currentRoom, setPlayerMark
     };
 
     const handleMoveMade = (data) => {
+      setIsProcessingMove(false);
+      stopTurnTimer();
+      
       dispatch(setMove({
         x: data.x,
         y: data.y,
@@ -219,28 +247,60 @@ export const useGameRoomPlaying = (roomId, hasJoined, currentRoom, setPlayerMark
         history: data.history,
         lastMove: data.lastMove,
       }));
+      
     };
 
     const handleTurnStarted = (data) => {
-      console.log('Sự kiện lượt bắt đầu:', data);
+      stopTurnTimer();
+      
       if (data.turnStartTime && data.turnTimeLimit) {
         startTurnTimer(data.turnStartTime, data.turnTimeLimit);
+      } else if (data.turnTimeLimit) {
+        startTurnTimer(Date.now(), data.turnTimeLimit);
       }
     };
 
     const handleGameState = (data) => {
-      console.log('Đã nhận game state:', data);
-      if (data.room && data.room._id?.toString() === roomId) {
-        dispatch(setRoom({ roomId: data.room._id, players: data.room.players || [] }));
+      if (data.room) {
+        if (data.room._id?.toString() === roomId) {
+          dispatch(setRoom({ roomId: data.room._id, players: data.room.players || [] }));
+        }
+      }
+      
+      if (data.board) {
+        const isPlaying = data.room?.status === ROOM_STATUS.PLAYING;
         
-        if (data.board && data.room.status === ROOM_STATUS.PLAYING) {
-          dispatch(setMove({
-            board: data.board,
-            turn: data.turn,
-            currentPlayerIndex: data.currentPlayerIndex,
-            history: data.history || [],
-          }));
-          console.log('Game state đã được khôi phục');
+        dispatch(setMove({
+          board: data.board,
+          turn: data.turn,
+          currentPlayerIndex: data.currentPlayerIndex,
+          history: data.history || [],
+          lastMove: data.history && data.history.length > 0 
+            ? data.history[data.history.length - 1] 
+            : null,
+        }));
+        
+        setGameStateReceived(true);
+        
+        if (isPlaying && data.turnStartTime && data.turnTimeLimit) {
+          startTurnTimer(data.turnStartTime, data.turnTimeLimit);
+        } else if (isPlaying && data.turnTimeLimit) {
+          startTurnTimer(Date.now(), data.turnTimeLimit);
+        }
+      }
+    };
+
+    const handleGameStateSync = (data) => {
+      if (data.board) {
+        dispatch(setMove({
+          board: data.board,
+          turn: data.turn,
+          currentPlayerIndex: data.currentPlayerIndex,
+          history: data.history || [],
+        }));
+        
+        if (data.turnStartTime && data.turnTimeLimit) {
+          startTurnTimer(data.turnStartTime, data.turnTimeLimit);
         }
       }
     };
@@ -273,7 +333,6 @@ export const useGameRoomPlaying = (roomId, hasJoined, currentRoom, setPlayerMark
     };
 
     const handleDrawCancelled = (data) => {
-      console.log('Đã nhận sự kiện hủy xin hòa:', data);
       setShowDrawModal(false);
       setDrawRequestInfo(null);
       
@@ -298,11 +357,21 @@ export const useGameRoomPlaying = (roomId, hasJoined, currentRoom, setPlayerMark
       setShowSurrenderModal(false);
     };
 
-    // Register listeners
+    const handleMoveError = (data) => {
+      console.error('Lỗi khi đánh cờ:', data);
+      setIsProcessingMove(false);
+      toast.error(data.message || 'Không thể đánh cờ', {
+        position: "top-right",
+        autoClose: 1000,
+      });
+    };
+
     gameSocket.onGameStart(handleGameStart);
     gameSocket.onMoveMade(handleMoveMade);
     gameSocket.onTurnStarted(handleTurnStarted);
     gameSocket.onGameState(handleGameState);
+    gameSocket.onGameStateSync(handleGameStateSync);
+    gameSocket.onMoveError(handleMoveError);
     gameSocket.onDrawRequested(handleDrawRequested);
     gameSocket.onDrawCancelled(handleDrawCancelled);
     gameSocket.onDrawAccepted(handleDrawAccepted);
@@ -320,6 +389,11 @@ export const useGameRoomPlaying = (roomId, hasJoined, currentRoom, setPlayerMark
       gameSocket.offMoveMade(handleMoveMade);
       gameSocket.offTurnStarted(handleTurnStarted);
       gameSocket.offGameState(handleGameState);
+      gameSocket.offGameStateSync(handleGameStateSync);
+      const socket = socketClient.getSocket();
+      if (socket) {
+        socket.off(SOCKET_EVENTS.MOVE_ERROR, handleMoveError);
+      }
       gameSocket.offDrawRequested(handleDrawRequested);
       gameSocket.offDrawCancelled(handleDrawCancelled);
       gameSocket.offDrawAccepted(handleDrawAccepted);
@@ -387,6 +461,8 @@ export const useGameRoomPlaying = (roomId, hasJoined, currentRoom, setPlayerMark
     setupPlayingListeners,
     stopPingInterval,
     stopTurnTimer,
+    gameStateReceived,
+    setGameStateReceived,
   };
 };
 

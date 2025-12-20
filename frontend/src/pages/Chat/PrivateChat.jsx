@@ -16,17 +16,32 @@ const PrivateChat = () => {
   const [friend, setFriend] = useState(null);
   const [loading, setLoading] = useState(true);
   const messagesEndRef = useRef(null);
+  
+  const loadingChatRef = useRef(false);
+  const hasLoadedRef = useRef(false);
+  const currentFriendIdRef = useRef(null);
 
   useEffect(() => {
     if (!friendId) {
       navigate('/friends');
       return;
     }
+    
+    if (currentFriendIdRef.current !== friendId) {
+      hasLoadedRef.current = false;
+      currentFriendIdRef.current = friendId;
+    }
+    
+    if (hasLoadedRef.current) {
+      setupSocketListeners();
+      return;
+    }
+    
+    hasLoadedRef.current = true;
     loadChatHistory();
     setupSocketListeners();
 
     return () => {
-      // Cleanup socket listeners
       socketClient.off(SOCKET_EVENTS.MESSAGE_RECEIVED);
       socketClient.off(SOCKET_EVENTS.PRIVATE_MESSAGES);
       socketClient.off(SOCKET_EVENTS.CHAT_ERROR);
@@ -34,6 +49,12 @@ const PrivateChat = () => {
   }, [friendId]);
 
   const loadChatHistory = async () => {
+    // Tránh gọi trùng nếu đang load
+    if (loadingChatRef.current) {
+      return;
+    }
+    
+    loadingChatRef.current = true;
     try {
       setLoading(true);
       
@@ -62,6 +83,7 @@ const PrivateChat = () => {
       console.error('Lỗi khi tải lịch sử chat:', error);
     } finally {
       setLoading(false);
+      loadingChatRef.current = false;
     }
   };
 
@@ -73,7 +95,7 @@ const PrivateChat = () => {
       const userStr = userId?.toString();
       const friendIdStr = friendId?.toString();
       
-      // Kiểm tra xem tin nhắn có liên quan đến cuộc trò chuyện này không
+      // Kiểm tra tin nhắn có liên quan đến cuộc trò chuyện này không
       if ((senderId?.toString() === userStr && receiverId?.toString() === friendIdStr) ||
           (senderId?.toString() === friendIdStr && receiverId?.toString() === userStr)) {
         setMessages(prev => [...prev, messageData]);

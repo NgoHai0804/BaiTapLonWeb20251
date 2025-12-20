@@ -13,7 +13,6 @@ export const friendApi = {
 
   getRequests: async () => {
     const response = await apiClient.get('/api/friend/requests');
-    // Backend trả về { success: true, message, data }
     return response.data.data || response.data;
   },
 

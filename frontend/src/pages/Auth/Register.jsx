@@ -44,9 +44,9 @@ function Register() {
     }
 
     if (!formData.nickname.trim()) {
-      newErrors.nickname = 'Vui lòng nhập nickname';
+      newErrors.nickname = 'Vui lòng nhập tên hiển thị';
     } else if (formData.nickname.length < 3) {
-      newErrors.nickname = 'Nickname phải có ít nhất 3 ký tự';
+      newErrors.nickname = 'Tên hiển thị phải có ít nhất 3 ký tự';
     }
 
     if (!formData.email.trim()) {
@@ -61,7 +61,9 @@ function Register() {
       newErrors.password = 'Mật khẩu phải có ít nhất 6 ký tự';
     }
 
-    if (formData.password !== formData.confirmPassword) {
+    if (!formData.confirmPassword) {
+      newErrors.confirmPassword = 'Vui lòng xác nhận mật khẩu';
+    } else if (formData.password !== formData.confirmPassword) {
       newErrors.confirmPassword = 'Mật khẩu xác nhận không khớp';
     }
 
@@ -82,6 +84,7 @@ function Register() {
       const data = await authApi.register({
         username: formData.username,
         nickname: formData.nickname || formData.username, // Sử dụng nickname hoặc fallback về username
+        email: formData.email,
         password: formData.password,
       });
 
@@ -93,6 +96,7 @@ function Register() {
           avatarUrl: data.avatarUrl,
         },
         token: data.token,
+        refreshToken: data.refreshToken,
       }));
 
       toast.success('Đăng ký thành công!');
@@ -105,14 +109,14 @@ function Register() {
 
   return (
     <div>
-      <h2 className="text-3xl font-bold text-gray-800 mb-2 text-center">Đăng Ký</h2>
-      <p className="text-gray-600 text-center mb-6">Tạo tài khoản mới để bắt đầu chơi</p>
+      <h2 className="text-2xl sm:text-3xl font-bold text-gray-800 mb-2 text-center">Đăng Ký</h2>
+      <p className="text-sm sm:text-base text-gray-600 text-center mb-4 sm:mb-6">Tạo tài khoản mới để bắt đầu chơi</p>
 
       <form onSubmit={handleSubmit} className="space-y-4">
         {/* Username */}
         <div>
           <label htmlFor="username" className="block text-sm font-medium text-gray-700 mb-1">
-            Tên đăng nhập
+            Tên đăng nhập <span className="text-red-500">*</span>
           </label>
           <input
             type="text"
@@ -120,6 +124,7 @@ function Register() {
             name="username"
             value={formData.username}
             onChange={handleChange}
+            required
             className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 ${
               errors.username
                 ? 'border-red-500 focus:ring-red-500'
@@ -136,7 +141,7 @@ function Register() {
         {/* Nickname */}
         <div>
           <label htmlFor="nickname" className="block text-sm font-medium text-gray-700 mb-1">
-            Nickname (Tên hiển thị)
+            Tên hiển thị <span className="text-red-500">*</span>
           </label>
           <input
             type="text"
@@ -144,12 +149,13 @@ function Register() {
             name="nickname"
             value={formData.nickname}
             onChange={handleChange}
+            required
             className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 ${
               errors.nickname
                 ? 'border-red-500 focus:ring-red-500'
                 : 'border-gray-300 focus:ring-blue-500'
             }`}
-            placeholder="Nhập nickname"
+            placeholder="Nhập tên hiển thị"
             disabled={loading}
           />
           {errors.nickname && (
@@ -160,7 +166,7 @@ function Register() {
         {/* Email */}
         <div>
           <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1">
-            Email
+            Email <span className="text-red-500">*</span>
           </label>
           <input
             type="email"
@@ -168,6 +174,7 @@ function Register() {
             name="email"
             value={formData.email}
             onChange={handleChange}
+            required
             className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 ${
               errors.email
                 ? 'border-red-500 focus:ring-red-500'
@@ -184,7 +191,7 @@ function Register() {
         {/* Password */}
         <div>
           <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-1">
-            Mật khẩu
+            Mật khẩu <span className="text-red-500">*</span>
           </label>
           <input
             type="password"
@@ -192,6 +199,7 @@ function Register() {
             name="password"
             value={formData.password}
             onChange={handleChange}
+            required
             className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 ${
               errors.password
                 ? 'border-red-500 focus:ring-red-500'
@@ -208,7 +216,7 @@ function Register() {
         {/* Confirm Password */}
         <div>
           <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-700 mb-1">
-            Xác nhận mật khẩu
+            Xác nhận mật khẩu <span className="text-red-500">*</span>
           </label>
           <input
             type="password"
@@ -216,6 +224,7 @@ function Register() {
             name="confirmPassword"
             value={formData.confirmPassword}
             onChange={handleChange}
+            required
             className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 ${
               errors.confirmPassword
                 ? 'border-red-500 focus:ring-red-500'

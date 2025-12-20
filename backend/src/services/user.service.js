@@ -1,17 +1,18 @@
-// user.service.js
-// Business logic for users: fetch/update profiles, nickname checks, leaderboard.
+// user.service.js - xử lý logic quản lý người dùng
 
+const bcrypt = require("bcryptjs");
+const mongoose = require("mongoose");
 const User = require("../models/user.model");
-const { checkData, hashPassword } = require("../utils/validation");
+const { checkData, checkNickname, hashPassword } = require("../utils/validation");
 const logger = require("../utils/logger");
 
-// Get user profile (excluding password hash)
+// Lấy profile của user (không có password, username, email)
 const getUserProfile = async (userId) => {
   try {
-    const user = await User.findById(userId).select("-passwordHash");
+    const user = await User.findById(userId).select("-passwordHash -username -email");
     if (!user) {
       logger.warn(`User not found: ${userId}`);
-      throw new Error("User not found");
+      throw new Error("Không tìm thấy người dùng");
     }
     logger.info(`Fetched profile for user: ${userId}`);
     return user;
@@ -21,20 +22,37 @@ const getUserProfile = async (userId) => {
   }
 };
 
-// Update profile. Accepts an object with optional nickname, avatarUrl, password
+// Lấy profile đầy đủ (có username, email) - chỉ dùng cho chính user đó
+const getUserProfileFull = async (userId) => {
+  try {
+    const user = await User.findById(userId).select("-passwordHash");
+    if (!user) {
+      logger.warn(`User not found: ${userId}`);
+      throw new Error("Không tìm thấy người dùng");
+    }
+    logger.info(`Fetched full profile for user: ${userId}`);
+    return user;
+  } catch (err) {
+    logger.error("getUserProfileFull error: %o", err);
+    throw err;
+  }
+};
+
+// Cập nhật profile (nickname, avatarUrl, password - tất cả optional)
 const updateUserProfile = async (userId, { nickname, avatarUrl, password } = {}) => {
   try {
     const updateData = {};
 
     if (nickname) {
-      const nickCheck = checkData(nickname, 5, 15);
+      const trimmedNickname = nickname.trim();
+      const nickCheck = checkNickname(trimmedNickname, 5, 15);
       if (!nickCheck.valid) throw new Error(nickCheck.message);
 
-      const existingNickname = await User.findOne({ nickname });
+      const existingNickname = await User.findOne({ nickname: trimmedNickname });
       if (existingNickname && existingNickname._id.toString() !== String(userId)) {
-        throw new Error("Nickname already exists.");
+        throw new Error("Nickname đã tồn tại.");
       }
-      updateData.nickname = nickname;
+      updateData.nickname = trimmedNickname;
     }
 
     if (avatarUrl) updateData.avatarUrl = avatarUrl;
@@ -47,10 +65,10 @@ const updateUserProfile = async (userId, { nickname, avatarUrl, password } = {})
 
     if (Object.keys(updateData).length === 0) {
       logger.info(`No update needed for user: ${userId}`);
-      return await User.findById(userId).select("-passwordHash");
+      return await User.findById(userId).select("-passwordHash -username -email");
     }
 
-    const user = await User.findByIdAndUpdate(userId, updateData, { new: true }).select("-passwordHash");
+    const user = await User.findByIdAndUpdate(userId, updateData, { new: true }).select("-passwordHash -username -email");
     logger.info(`Updated profile for user: ${userId}`);
     return user;
   } catch (err) {
@@ -59,13 +77,13 @@ const updateUserProfile = async (userId, { nickname, avatarUrl, password } = {})
   }
 };
 
-// Leaderboard: returns top users for a given gameId ordered by their gameStats.score
+// Lấy bảng xếp hạng theo gameId
 const getLeaderboard = async (gameId = "caro") => {
   try {
     const pipeline = [
       { $unwind: "$gameStats" },
       { $match: { "gameStats.gameId": gameId } },
-      { $project: { username: 1, nickname: 1, avatarUrl: 1, score: "$gameStats.score" } },
+      { $project: { nickname: 1, avatarUrl: 1, score: "$gameStats.score" } },
       { $sort: { score: -1 } },
       { $limit: 20 }
     ];
@@ -82,45 +100,70 @@ const getLeaderboard = async (gameId = "caro") => {
 // Cập nhật gameStats khi game kết thúc
 const updateGameStats = async (userId, gameId = "caro", isWin, isDraw = false) => {
   try {
-    const user = await User.findById(userId);
+    let userObjectId = userId;
+    if (typeof userId === 'string' && mongoose.Types.ObjectId.isValid(userId)) {
+      userObjectId = new mongoose.Types.ObjectId(userId);
+    }
+
+    const user = await User.findById(userObjectId);
     if (!user) {
       logger.warn(`User not found for stats update: ${userId}`);
       return;
     }
 
-    // Tìm hoặc tạo gameStats cho game này
     let gameStat = user.gameStats.find(s => s.gameId === gameId);
+    let newTotalGames, newTotalWin, newTotalLose, newScore;
     
     if (!gameStat) {
-      // Tạo mới gameStats
-      gameStat = {
-        gameId: gameId,
-        nameGame: "Cờ Caro",
-        totalGames: 0,
-        totalWin: 0,
-        totalLose: 0,
-        score: 1000, // Điểm khởi đầu
-      };
-      user.gameStats.push(gameStat);
-    }
-
-    // Cập nhật thống kê
-    gameStat.totalGames += 1;
-    
-    if (isDraw) {
-      // Hòa: không thay đổi điểm nhiều
-      gameStat.score = Math.max(0, gameStat.score + 0);
-    } else if (isWin) {
-      gameStat.totalWin += 1;
-      // Thắng: +20 điểm
-      gameStat.score += 20;
+      // Tạo gameStats mới
+      newTotalGames = 1;
+      newTotalWin = isWin ? 1 : 0;
+      newTotalLose = (!isWin && !isDraw) ? 1 : 0;
+      newScore = isDraw ? 1000 : (isWin ? 1020 : 990);
+      
+      await User.findByIdAndUpdate(
+        userObjectId,
+        {
+          $push: {
+            gameStats: {
+              gameId: gameId,
+              nameGame: "Cờ Caro",
+              totalGames: newTotalGames,
+              totalWin: newTotalWin,
+              totalLose: newTotalLose,
+              score: newScore
+            }
+          }
+        },
+        { new: true, runValidators: true }
+      );
     } else {
-      gameStat.totalLose += 1;
-      // Thua: -10 điểm
-      gameStat.score = Math.max(0, gameStat.score - 10);
+      newTotalGames = gameStat.totalGames + 1;
+      newTotalWin = isWin ? gameStat.totalWin + 1 : gameStat.totalWin;
+      newTotalLose = (!isWin && !isDraw) ? gameStat.totalLose + 1 : gameStat.totalLose;
+      
+      if (isDraw) {
+        newScore = gameStat.score;
+      } else if (isWin) {
+        newScore = gameStat.score + 20;
+      } else {
+        newScore = Math.max(0, gameStat.score - 10);
+      }
+      
+      await User.updateOne(
+        { _id: userObjectId, "gameStats.gameId": gameId },
+        {
+          $set: {
+            "gameStats.$.totalGames": newTotalGames,
+            "gameStats.$.totalWin": newTotalWin,
+            "gameStats.$.totalLose": newTotalLose,
+            "gameStats.$.score": newScore
+          }
+        },
+        { runValidators: true }
+      );
     }
-
-    await user.save();
+    
     logger.info(`Updated game stats for user ${userId}: ${isWin ? 'Win' : isDraw ? 'Draw' : 'Lose'}`);
   } catch (err) {
     logger.error("updateGameStats error: %o", err);
@@ -128,7 +171,7 @@ const updateGameStats = async (userId, gameId = "caro", isWin, isDraw = false) =
   }
 };
 
-// Cập nhật trạng thái user (online/offline/in_game)
+// Cập nhật trạng thái user
 const updateUserStatus = async (userId, status) => {
   try {
     if (!userId || !status) {
@@ -143,7 +186,6 @@ const updateUserStatus = async (userId, status) => {
     }
 
     const updateData = { status: status };
-    // Chỉ cập nhật lastOnline nếu user đang online hoặc in_game
     if (status === "online" || status === "in_game") {
       updateData.lastOnline = new Date();
     }
@@ -152,7 +194,7 @@ const updateUserStatus = async (userId, status) => {
       userId,
       updateData,
       { new: true }
-    ).select("-passwordHash");
+    ).select("-passwordHash -username -email");
 
     if (!user) {
       logger.warn(`User not found for status update: ${userId}`);
@@ -163,14 +205,49 @@ const updateUserStatus = async (userId, status) => {
     return user;
   } catch (err) {
     logger.error("updateUserStatus error: %o", err);
-    // Không throw để không làm gián đoạn flow chính
+  }
+};
+
+// Đổi mật khẩu
+const changePassword = async (userId, { currentPassword, newPassword }) => {
+  try {
+    if (!currentPassword || !newPassword) {
+      throw new Error("Vui lòng nhập mật khẩu hiện tại và mật khẩu mới");
+    }
+
+    const passCheck = checkData(newPassword, 8, 20);
+    if (!passCheck.valid) {
+      throw new Error(passCheck.message || "Mật khẩu mới không hợp lệ (8-20 ký tự)");
+    }
+
+    const user = await User.findById(userId);
+    if (!user) {
+      throw new Error("Người dùng không tồn tại");
+    }
+
+    const isMatch = await bcrypt.compare(currentPassword, user.passwordHash);
+    if (!isMatch) {
+      throw new Error("Mật khẩu hiện tại không đúng");
+    }
+
+    const newPasswordHash = await hashPassword(newPassword);
+    user.passwordHash = newPasswordHash;
+    await user.save();
+
+    logger.info(`Password changed for user: ${userId}`);
+    return { success: true, message: "Đổi mật khẩu thành công" };
+  } catch (err) {
+    logger.error("changePassword error: %o", err);
+    throw err;
   }
 };
 
 module.exports = {
   getUserProfile,
+  getUserProfileFull,
   updateUserProfile,
   getLeaderboard,
   updateGameStats,
   updateUserStatus,
+  changePassword,
 };

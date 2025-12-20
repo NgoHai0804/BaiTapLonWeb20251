@@ -19,11 +19,9 @@ export const roomApi = {
   createRoom: async (roomData) => {
     try {
       const response = await apiClient.post(API_ENDPOINTS.CREATE, roomData);
-      // Backend trả về { success: true, data: {...}, message: "..." }
       if (response.data.success && response.data.data) {
         return { room: response.data.data };
       }
-      // Fallback
       return { room: response.data.data || response.data };
     } catch (error) {
       console.error('createRoom API error:', error);
@@ -52,9 +50,7 @@ export const roomApi = {
   },
 
   verifyPassword: async (roomId, password) => {
-    console.log('API verifyPassword được gọi:', { roomId, hasPassword: !!password, passwordLength: password?.length });
     const response = await apiClient.post(API_ENDPOINTS.VERIFY_PASSWORD, { roomId, password });
-    console.log('Phản hồi từ API verifyPassword:', response.data);
     return response.data.data || response.data;
   },
 };

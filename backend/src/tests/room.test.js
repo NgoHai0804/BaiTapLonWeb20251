@@ -1,1 +1,0 @@
-// kiểm tra tạo phòng, join/leave.

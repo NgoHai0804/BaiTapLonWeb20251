@@ -5,7 +5,9 @@ import { toast } from 'react-toastify';
 import { roomApi } from '../../services/api/roomApi';
 import { setRooms, addRoom, removeRoom, updateRoom } from '../../store/roomSlice';
 import { gameSocket } from '../../services/socket/gameSocket';
-import RoomCard from '../../components/RoomCard/RoomCard';
+import LobbyHeader from './components/LobbyHeader';
+import SearchAndFilter from './components/SearchAndFilter';
+import RoomList from './components/RoomList';
 
 const Lobby = () => {
   const navigate = useNavigate();
@@ -14,69 +16,95 @@ const Lobby = () => {
   const { rooms } = useSelector((state) => state.room);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
-  const [filter, setFilter] = useState('all'); // all, waiting, playing, full
+  const [filter, setFilter] = useState('all');
   
-  // Refs để track auto-refresh
   const refreshIntervalRef = useRef(null);
   const lastActivityRef = useRef(Date.now());
   const isUserActiveRef = useRef(true);
-  const previousPathnameRef = useRef(location.pathname);
+  const previousPathnameRef = useRef(null);
+  const refreshFromEventRef = useRef(false);
+  const isMountedRef = useRef(false);
 
-  // Load rooms function
-  const loadRooms = useCallback(async () => {
+  const loadRooms = useCallback(async (delayCheckUserRoom = 0) => {
     try {
       setLoading(true);
-      console.log('Đang tải danh sách phòng từ API...');
-      const response = await roomApi.getRooms();
-      console.log('Phản hồi từ API:', response);
       
-      // Backend trả về { success: true, data: [...], message: "..." }
-      // hoặc array trực tiếp
+      const roomsPromise = roomApi.getRooms().catch(err => {
+        console.error('Lỗi khi tải danh sách phòng:', err);
+        return null;
+      });
+      
+      const userRoomCheckPromise = delayCheckUserRoom > 0
+        ? new Promise(resolve => {
+            setTimeout(async () => {
+              try {
+                const result = await roomApi.checkUserRoom();
+                resolve(result);
+              } catch (err) {
+                console.error('Lỗi khi kiểm tra phòng của user:', err);
+                resolve(null);
+              }
+            }, delayCheckUserRoom);
+          })
+        : roomApi.checkUserRoom().catch(err => {
+            console.error('Lỗi khi kiểm tra phòng của user:', err);
+            return null;
+          });
+      
+      const [roomsResponse, userRoomCheck] = await Promise.all([
+        roomsPromise,
+        userRoomCheckPromise
+      ]);
+      
       let rooms = [];
-      if (Array.isArray(response)) {
-        rooms = response;
-      } else if (response?.data && Array.isArray(response.data)) {
-        rooms = response.data;
-      } else if (response?.rooms && Array.isArray(response.rooms)) {
-        rooms = response.rooms;
+      if (roomsResponse) {
+        if (Array.isArray(roomsResponse)) {
+          rooms = roomsResponse;
+        } else if (roomsResponse?.data && Array.isArray(roomsResponse.data)) {
+          rooms = roomsResponse.data;
+        } else if (roomsResponse?.rooms && Array.isArray(roomsResponse.rooms)) {
+          rooms = roomsResponse.rooms;
+        }
       }
       
-      console.log('Đã tải', rooms.length, 'phòng');
       dispatch(setRooms(rooms));
+      
+      if (userRoomCheck?.inRoom && userRoomCheck?.room?._id) {
+        const roomId = userRoomCheck.room._id;
+        console.log('User đang ở trong phòng, chuyển đến phòng:', roomId);
+        navigate(`/game/${roomId}`, { replace: true });
+        return;
+      }
+      
+      if (!roomsResponse) {
+        const errorMessage = 'Không thể tải danh sách phòng';
+        toast.error(errorMessage);
+        dispatch(setRooms([]));
+      }
     } catch (error) {
       const errorMessage = error.response?.data?.message || error.message || 'Không thể tải danh sách phòng';
       toast.error(errorMessage);
-      console.error('Lỗi khi tải danh sách phòng:', error);
-      console.error('Chi tiết lỗi:', {
-        message: error.message,
-        response: error.response?.data,
-        status: error.response?.status,
-      });
-      // Đặt mảng rỗng khi có lỗi
+      console.error('Lỗi khi tải dữ liệu:', error);
       dispatch(setRooms([]));
     } finally {
       setLoading(false);
     }
-  }, [dispatch]);
+  }, [dispatch, navigate]);
 
-  // Theo dõi hoạt động của user
   const updateActivity = useCallback(() => {
     lastActivityRef.current = Date.now();
     isUserActiveRef.current = true;
   }, []);
 
-  // Tự động làm mới danh sách phòng mỗi 10 giây nếu user không thao tác
   useEffect(() => {
     const checkAndRefresh = () => {
       const timeSinceLastActivity = Date.now() - lastActivityRef.current;
-      // Nếu user không thao tác trong 2 giây trở lên, cho phép auto-refresh
       if (timeSinceLastActivity >= 2000) {
         isUserActiveRef.current = false;
         loadRooms();
       }
     };
 
-    // Bắt đầu interval auto-refresh mỗi 10 giây
     refreshIntervalRef.current = setInterval(checkAndRefresh, 10000);
 
     return () => {
@@ -87,7 +115,6 @@ const Lobby = () => {
     };
   }, [loadRooms]);
 
-  // Listen for user activity events
   useEffect(() => {
     const events = ['mousedown', 'mousemove', 'keypress', 'scroll', 'touchstart', 'click'];
     
@@ -106,56 +133,61 @@ const Lobby = () => {
     };
   }, [updateActivity]);
 
-  // Tự động load lại khi navigate về từ game room
   useEffect(() => {
-    // Nếu có state từ location (ví dụ: từ GameRoom khi rời phòng)
-    if (location.state?.fromGameRoom) {
-      console.log('Đã điều hướng từ game room, đang làm mới danh sách phòng...');
+    const handleLobbyRefresh = () => {
+      refreshFromEventRef.current = true;
       loadRooms();
-      // Clear state để tránh load lại nhiều lần
-      window.history.replaceState({}, document.title);
-    }
-  }, [location.state, loadRooms]);
+      setTimeout(() => {
+        refreshFromEventRef.current = false;
+      }, 100);
+    };
 
-  // Tự động load lại khi pathname thay đổi về /lobby (khi quay về lobby từ bất kỳ trang nào)
+    window.addEventListener('lobby-refresh', handleLobbyRefresh);
+    return () => {
+      window.removeEventListener('lobby-refresh', handleLobbyRefresh);
+    };
+  }, [loadRooms]);
+
   useEffect(() => {
+    if (location.state?.fromGameRoom) {
+      loadRooms(800);
+      window.history.replaceState({}, document.title);
+      return;
+    }
+    
     const currentPathname = location.pathname;
     const previousPathname = previousPathnameRef.current;
     
-    // Chỉ load lại nếu:
-    // 1. Đang ở trang /lobby
-    // 2. Pathname đã thay đổi (không phải lần đầu mount)
-    // 3. Pathname trước đó không phải là /lobby (tránh load lại khi đã ở lobby)
-    if (currentPathname === '/lobby' && previousPathname !== currentPathname && previousPathname !== '') {
-      console.log('Đã điều hướng đến trang lobby, đang tải danh sách phòng...');
+    if (refreshFromEventRef.current) {
+      previousPathnameRef.current = currentPathname;
+      isMountedRef.current = true;
+      return;
+    }
+    
+    if (!isMountedRef.current || previousPathname === null) {
+      loadRooms();
+      isMountedRef.current = true;
+    } else if (currentPathname === '/lobby' && previousPathname !== currentPathname && previousPathname !== '') {
       loadRooms();
     }
     
-    // Cập nhật previous pathname
     previousPathnameRef.current = currentPathname;
-  }, [location.pathname, loadRooms]);
+  }, [location.pathname, location.state, loadRooms]);
 
   useEffect(() => {
-    console.log('Component Lobby đã được mount, đang tải danh sách phòng...');
-    loadRooms();
-
-    // Listen for room updates
     const handleRoomUpdate = (data) => {
-      console.log('Room update received:', data);
       if (data?.room) {
         dispatch(updateRoom(data.room));
       }
     };
 
     const handlePlayerJoined = (data) => {
-      console.log('Người chơi đã tham gia:', data);
       if (data?.room) {
         dispatch(updateRoom(data.room));
       }
     };
 
     const handlePlayerLeft = (data) => {
-      console.log('Người chơi đã rời:', data);
       if (data?.room) {
         dispatch(updateRoom(data.room));
       }
@@ -178,7 +210,7 @@ const Lobby = () => {
         console.error('Lỗi khi dọn dẹp socket listeners:', error);
       }
     };
-  }, [dispatch, loadRooms]);
+  }, [dispatch]);
 
 
   const handleCreateRoom = () => {
@@ -196,88 +228,30 @@ const Lobby = () => {
     return matchesSearch && matchesFilter;
   });
 
-  console.log('Đang render Lobby:', { loading, roomsCount: rooms?.length || 0, filteredCount: filteredRooms?.length || 0 });
 
-  // Safety check
   if (!rooms) {
-    console.warn('Rooms là null/undefined, đang khởi tạo...');
     dispatch(setRooms([]));
   }
 
   return (
-    <div className="min-h-screen bg-gray-100 p-4">
+    <div className="min-h-screen bg-gray-100 p-3 sm:p-4">
       <div className="max-w-7xl mx-auto">
-        {/* Header */}
-        <div className="bg-white rounded-lg shadow p-6 mb-6">
-          <div className="flex items-center justify-between mb-4">
-            <h1 className="text-3xl font-bold text-gray-800">Lobby</h1>
-            <button
-              onClick={handleCreateRoom}
-              className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium"
-            >
-              + Tạo phòng mới
-            </button>
-          </div>
-
-          {/* Search and Filter */}
-          <div className="flex gap-4">
-            <input
-              type="text"
-              placeholder="Tìm kiếm phòng..."
-              value={searchTerm}
-              onChange={(e) => {
-                setSearchTerm(e.target.value);
-                updateActivity();
-              }}
-              className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-            />
-            <select
-              value={filter}
-              onChange={(e) => {
-                setFilter(e.target.value);
-                updateActivity();
-              }}
-              className="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-            >
-              <option value="all">Tất cả</option>
-              <option value="waiting">Đang chờ</option>
-              <option value="playing">Đang chơi</option>
-              <option value="full">Đầy</option>
-            </select>
-            <button
-              onClick={() => {
-                updateActivity();
-                loadRooms();
-              }}
-              className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors"
-            >
-              🔄 Làm mới
-            </button>
-          </div>
+        <div className="bg-white rounded-lg shadow p-4 sm:p-6 mb-4 sm:mb-6">
+          <LobbyHeader onCreateRoom={handleCreateRoom} />
+          <SearchAndFilter
+            searchTerm={searchTerm}
+            onSearchChange={setSearchTerm}
+            filter={filter}
+            onFilterChange={setFilter}
+            onRefresh={loadRooms}
+            onActivityUpdate={updateActivity}
+          />
         </div>
-
-        {/* Rooms List */}
-        {loading ? (
-          <div className="text-center py-12">
-            <p className="text-gray-600">Đang tải...</p>
-          </div>
-        ) : filteredRooms.length === 0 ? (
-          <div className="text-center py-12 bg-white rounded-lg shadow">
-            <p className="text-gray-600 text-lg">Không có phòng nào</p>
-            <button
-              onClick={handleCreateRoom}
-              className="mt-4 px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-            >
-              Tạo phòng đầu tiên
-            </button>
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {filteredRooms.map((room) => (
-              <RoomCard key={room._id} room={room} />
-            ))}
-          </div>
-        )}
+        <RoomList
+          loading={loading}
+          filteredRooms={filteredRooms}
+          onCreateRoom={handleCreateRoom}
+        />
       </div>
     </div>
   );

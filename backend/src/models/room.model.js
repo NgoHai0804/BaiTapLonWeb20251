@@ -32,7 +32,6 @@ const RoomSchema = new Schema({
   createdAt: { type: Date, default: Date.now }, // Thời gian tạo phòng
 });
 
-RoomSchema.index({ status: 1 });
-RoomSchema.index({ hostId: 1 });
+// Index đã được định nghĩa trong schema với index: true, không cần định nghĩa lại
 
 module.exports = mongoose.model("Room", RoomSchema);

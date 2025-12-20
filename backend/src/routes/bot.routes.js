@@ -1,6 +1,5 @@
 // bot.routes.js
-// Routes cho AI Bot
-
+// Định nghĩa các route liên quan đến AI Bot (tính nước đi cho bot)
 const express = require("express");
 const router = express.Router();
 const verifyToken = require("../middlewares/auth.middleware");

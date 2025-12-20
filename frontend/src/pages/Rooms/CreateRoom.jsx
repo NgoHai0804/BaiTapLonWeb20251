@@ -11,7 +11,7 @@ const CreateRoom = () => {
   const [formData, setFormData] = useState({
     name: '',
     password: '',
-    turnTimeLimit: 30, // Thời gian mỗi lượt đi (giây)
+    turnTimeLimit: 30,
   });
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState({});
@@ -48,7 +48,26 @@ const CreateRoom = () => {
 
     setLoading(true);
     try {
-      // Luôn gửi maxPlayers = 2
+      // Kiểm tra user có đang trong phòng nào không
+      try {
+        const userRoomCheck = await roomApi.checkUserRoom();
+        if (userRoomCheck?.inRoom && userRoomCheck?.room) {
+          const existingRoom = userRoomCheck.room;
+          const existingRoomId = existingRoom._id || existingRoom.id;
+          
+          toast.info('Bạn đang ở trong phòng khác, đang chuyển đến phòng đó...', {
+            position: "top-right",
+            autoClose: 2000,
+          });
+          
+          // Chuyển đến phòng hiện tại
+          navigate(`/game/${existingRoomId}`);
+          return;
+        }
+      } catch (checkError) {
+        console.log('Không thể kiểm tra phòng hiện tại:', checkError);
+      }
+
       const response = await roomApi.createRoom({
         ...formData,
         maxPlayers: 2
@@ -56,27 +75,40 @@ const CreateRoom = () => {
       const room = response.room || response.data || response;
       const roomId = room._id || room.id;
       
-      // Nếu có mật khẩu, lưu vào sessionStorage để tự động join
       if (formData.password) {
         sessionStorage.setItem(`room_password_${roomId}`, formData.password);
       }
       
-      toast.success('Tạo phòng thành công!');
+      const isExistingRoom = response.message?.includes('đang ở trong phòng');
+      if (isExistingRoom) {
+        toast.info('Bạn đang ở trong phòng này', {
+          position: "top-right",
+          autoClose: 1000,
+        });
+      } else {
+        toast.success('Tạo phòng thành công!', {
+          position: "top-right",
+          autoClose: 1000,
+        });
+      }
       
-      // Nếu có inviteFriendId, gửi lời mời sau khi join vào phòng
       if (inviteFriendId) {
-        // Đợi một chút để đảm bảo socket đã join phòng
         setTimeout(() => {
           gameSocket.inviteToRoom(roomId, inviteFriendId);
-          toast.info('Đã gửi lời mời đến bạn bè');
+          toast.info('Đã gửi lời mời đến bạn bè', {
+            position: "top-right",
+            autoClose: 1000,
+          });
         }, 1000);
       }
       
-      // Tự động join vào phòng vừa tạo
       navigate(`/game/${roomId}`);
     } catch (error) {
       const errorMessage = error.response?.data?.message || error.message || 'Không thể tạo phòng';
-      toast.error(errorMessage);
+      toast.error(errorMessage, {
+        position: "top-right",
+        autoClose: 1000,
+      });
       console.error('Lỗi khi tạo phòng:', error);
     } finally {
       setLoading(false);
@@ -84,12 +116,12 @@ const CreateRoom = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-100 p-4">
+    <div className="min-h-screen bg-gray-100 p-3 sm:p-4">
       <div className="max-w-2xl mx-auto">
-        <div className="bg-white rounded-lg shadow-lg p-8">
-          <h1 className="text-3xl font-bold text-gray-800 mb-6">Tạo phòng mới</h1>
+        <div className="bg-white rounded-lg shadow-lg p-4 sm:p-6 lg:p-8">
+          <h1 className="text-2xl sm:text-3xl font-bold text-gray-800 mb-4 sm:mb-6">Tạo phòng mới</h1>
 
-          <form onSubmit={handleSubmit} className="space-y-6">
+          <form onSubmit={handleSubmit} className="space-y-4 sm:space-y-6">
             {/* Room Name */}
             <div>
               <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-2">
@@ -156,18 +188,18 @@ const CreateRoom = () => {
             </div>
 
             {/* Buttons */}
-            <div className="flex gap-4">
+            <div className="flex flex-col sm:flex-row gap-3 sm:gap-4">
               <button
                 type="button"
                 onClick={() => navigate('/lobby')}
-                className="flex-1 px-6 py-3 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors font-medium"
+                className="w-full sm:flex-1 px-4 sm:px-6 py-2.5 sm:py-3 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors font-medium text-sm sm:text-base"
               >
                 Hủy
               </button>
               <button
                 type="submit"
                 disabled={loading}
-                className="flex-1 px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+                className="w-full sm:flex-1 px-4 sm:px-6 py-2.5 sm:py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed text-sm sm:text-base"
               >
                 {loading ? 'Đang tạo...' : 'Tạo phòng'}
               </button>

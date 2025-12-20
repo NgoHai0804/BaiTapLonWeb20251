@@ -1,27 +1,28 @@
-// server.js
-// Điểm khởi động chính của server
-// nodemon scr/server.js
-
-// Nhiệm vụ:
-// - Import app
-// - Tạo HTTP server
-// - Gắn Socket.IO vào HTTP server
-// - Lắng nghe cổng (process.env.PORT)
-// - Log trạng thái khi server khởi động thành công
+// server.js - entry point của server
 
 const http = require("http");
 const app = require("./app");
+const connectDB = require("./config/db");
 const initSocket = require("./sockets");
 
 const PORT = process.env.PORT || 3000;
 
-// Tạo HTTP server
-const server = http.createServer(app);
+const startServer = async () => {
+  try {
+    console.log("🔄 Đang kết nối đến MongoDB...");
+    await connectDB();
+    
+    const server = http.createServer(app);
+    const io = initSocket(server);
 
-// Khởi tạo Socket.IO
-const io = initSocket(server);
+    server.listen(PORT, () => {
+      console.log(`🚀 Server đang chạy trên cổng ${PORT}`);
+      console.log(`📡 Socket.IO đã được khởi tạo`);
+    });
+  } catch (error) {
+    console.error("❌ Lỗi khởi động server:", error.message);
+    process.exit(1);
+  }
+};
 
-// Lắng nghe trên cổng được chỉ định
-server.listen(PORT, () => {
-  console.log(`Server đang chạy trên cổng ${PORT}`);
-});
+startServer();

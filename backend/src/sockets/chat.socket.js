@@ -1,7 +1,5 @@
 // chat.socket.js
-
-// Quản lý chat realtime (trong phòng hoặc cá nhân).
-
+// Xử lý các event Socket.IO liên quan đến chat realtime (trong phòng hoặc chat riêng tư)
 const ChatService = require("../services/chat.service");
 const RoomService = require("../services/room.service");
 
@@ -10,7 +8,7 @@ function log(msg, data = null) {
 }
 
 module.exports = function chatSocket(io, socket) {
-  // Khi client gửi tin nhắn trong phòng hoặc chat riêng
+  // Xử lý khi client gửi tin nhắn (có thể là tin nhắn trong phòng hoặc chat riêng)
   socket.on("send_message", async ({ roomId, receiverId, message, type = 'text' }) => {
     try {
       const userId = socket.user._id;
@@ -47,7 +45,7 @@ module.exports = function chatSocket(io, socket) {
         message: message.trim(),
       });
 
-      // Gửi tin nhắn cho tất cả client trong room hoặc người nhận
+      // Chuẩn bị dữ liệu tin nhắn để gửi cho tất cả client trong phòng hoặc người nhận
       const messageData = {
         _id: savedMessage._id,
         message: savedMessage.message,
@@ -67,13 +65,12 @@ module.exports = function chatSocket(io, socket) {
       };
 
       if (roomIdStr) {
-        // Chat trong phòng
+        // Tin nhắn trong phòng: gửi cho tất cả người trong phòng
         io.to(roomIdStr).emit("message_received", messageData);
       } else if (receiverIdStr) {
-        // Chat riêng
-        // Gửi cho người nhận (sử dụng room với userId)
+        // Tin nhắn riêng tư: gửi cho người nhận (sử dụng room với userId)
         io.to(receiverIdStr).emit("message_received", messageData);
-        // Gửi cho người gửi để xác nhận
+        // Gửi lại cho người gửi để xác nhận đã gửi thành công
         socket.emit("message_received", messageData);
       } else {
         socket.emit("chat_error", { message: "Cần roomId hoặc receiverId" });
@@ -86,7 +83,7 @@ module.exports = function chatSocket(io, socket) {
     }
   });
 
-  // Lấy lịch sử chat của phòng
+  // Xử lý khi client yêu cầu lấy lịch sử chat của phòng
   socket.on("get_room_messages", async ({ roomId, limit = 50 }) => {
     try {
       const userId = socket.user._id;
@@ -110,10 +107,10 @@ module.exports = function chatSocket(io, socket) {
         return;
       }
 
-      // Lấy lịch sử chat
+      // Lấy lịch sử chat của phòng
       const messages = await ChatService.getRoomMessages(roomIdStr, limit);
 
-      // Đánh dấu đã đọc
+      // Đánh dấu tất cả tin nhắn trong phòng là đã đọc
       await ChatService.markRoomMessagesAsRead(roomIdStr, userId);
 
       socket.emit("room_messages", { roomId: roomIdStr, messages });
@@ -124,7 +121,7 @@ module.exports = function chatSocket(io, socket) {
     }
   });
 
-  // Lấy lịch sử chat riêng giữa 2 người
+  // Xử lý khi client yêu cầu lấy lịch sử chat riêng giữa 2 người
   socket.on("get_private_messages", async ({ userId, limit = 50 }) => {
     try {
       const currentUserId = socket.user._id;
@@ -135,10 +132,10 @@ module.exports = function chatSocket(io, socket) {
         return;
       }
 
-      // Lấy lịch sử chat
+      // Lấy lịch sử chat riêng giữa hai người
       const messages = await ChatService.getPrivateMessages(currentUserId, otherUserId, limit);
 
-      // Format messages để gửi về client
+      // Format dữ liệu tin nhắn để gửi về client
       const formattedMessages = messages.map(msg => ({
         _id: msg._id,
         message: msg.message,

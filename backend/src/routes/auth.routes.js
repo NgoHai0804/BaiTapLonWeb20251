@@ -1,16 +1,6 @@
 // auth.routes.js
-
-// Quản lý xác thực người dùng.
-
-// Chức năng chính:
-
-// POST /register – đăng ký tài khoản mới.
-
-// POST /login – đăng nhập, trả về JWT.
-
-// GET /verify – kiểm tra token hợp lệ.
-
-// POST /logout – đăng xuất (xóa token hoặc session).
+// Định nghĩa các route liên quan đến xác thực người dùng
+// Bao gồm: đăng ký, đăng nhập, quên mật khẩu
 
 
 
@@ -23,5 +13,11 @@ router.post('/register', authController.register);
 
 // Đăng nhập
 router.post('/login', authController.login);
+
+// Quên mật khẩu
+router.post('/forgot-password', authController.forgotPassword);
+
+// Refresh token
+router.post('/refresh', authController.refresh);
 
 module.exports = router;

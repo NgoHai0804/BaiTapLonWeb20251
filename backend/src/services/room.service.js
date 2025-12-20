@@ -1,26 +1,25 @@
-// room.service.js
-// Xử lý logic phòng chơi Caro.
+// room.service.js - xử lý logic phòng chơi Caro
 const Room = require("../models/room.model");
 const User = require("../models/user.model");
 const bcrypt = require("bcryptjs");
 const { v4: uuidv4 } = require("uuid");
 
-// Helper: Lấy ELO từ user data
+// Lấy điểm ELO của user
 async function getUserElo(userId) {
   try {
     const user = await User.findById(userId);
     if (!user || !user.gameStats || user.gameStats.length === 0) {
-      return 1000; // Default ELO
+      return 1000; // Điểm ELO mặc định
     }
     const caroStats = user.gameStats.find(s => s.gameId === 'caro') || user.gameStats[0];
     return caroStats?.score || 1000;
   } catch (error) {
     console.error('Error getting user ELO:', error);
-    return 1000; // Default ELO on error
+    return 1000; // Điểm ELO mặc định khi có lỗi
   }
 }
 
-// Helper: Lấy nickname từ user
+// Lấy nickname của user (dùng username nếu không có)
 async function getUserNickname(userId) {
   try {
     const user = await User.findById(userId).select('nickname username');
@@ -31,31 +30,26 @@ async function getUserNickname(userId) {
   }
 }
 
-// Helper: convert Mongoose doc sang JSON và populate ELO và nickname cho players
+// Chuyển room sang JSON và thêm thông tin ELO, nickname, avatarUrl
 async function toJSON(room) {
   const roomObj = room.toObject({ getters: true });
   
-  // Convert playerMarks từ Map sang Object nếu cần
   if (roomObj.playerMarks) {
     if (roomObj.playerMarks instanceof Map) {
       roomObj.playerMarks = Object.fromEntries(roomObj.playerMarks);
     } else if (typeof roomObj.playerMarks === 'object' && roomObj.playerMarks.constructor === Object) {
-      // Đã là Object rồi, giữ nguyên
     } else {
-      // Fallback: convert sang Object
       roomObj.playerMarks = roomObj.playerMarks || {};
     }
   } else {
     roomObj.playerMarks = {};
   }
   
-  // Populate ELO, nickname và avatarUrl cho mỗi player
   if (roomObj.players && roomObj.players.length > 0) {
     const playersWithElo = await Promise.all(
       roomObj.players.map(async (player) => {
         const elo = await getUserElo(player.userId);
         const nickname = await getUserNickname(player.userId);
-        // Lấy avatarUrl từ user
         let avatarUrl = null;
         try {
           const user = await User.findById(player.userId).select('avatarUrl');
@@ -67,7 +61,7 @@ async function toJSON(room) {
           ...player,
           nickname: nickname,
           elo: elo,
-          score: elo, // Alias cho compatibility
+          score: elo,
           avatarUrl: avatarUrl,
         };
       })
@@ -77,24 +71,21 @@ async function toJSON(room) {
   
   return roomObj;
 }
-// Tạo phòng mới
+// Tạo phòng chơi mới
 async function createRoom({ name, password, maxPlayers, hostId, hostUsername, turnTimeLimit, firstTurn }) {
   const passwordHash = password ? await bcrypt.hash(password, 10) : null;
-  
-  // Mặc định: chủ phòng là X, firstTurn = 'X'
   const defaultFirstTurn = firstTurn || 'X';
   const defaultPlayerMarks = {};
-  defaultPlayerMarks[hostId.toString()] = 'X'; // Chủ phòng mặc định là X
+  defaultPlayerMarks[hostId.toString()] = 'X';
   
-  // Mongoose tự động tạo _id mới (ObjectId) cho mỗi document mới
   const room = await Room.create({
     name: name || `Phòng #${Math.floor(Math.random() * 10000)}`,
     passwordHash,
     hostId,
-    maxPlayers: maxPlayers || 2, // Mặc định 2 người
-    turnTimeLimit: turnTimeLimit || 30, // Mặc định 30 giây
-    firstTurn: defaultFirstTurn, // Mặc định X đi trước
-    playerMarks: defaultPlayerMarks, // Chủ phòng mặc định là X
+    maxPlayers: maxPlayers || 2,
+    turnTimeLimit: turnTimeLimit || 30,
+    firstTurn: defaultFirstTurn,
+    playerMarks: defaultPlayerMarks,
     players: [
       {
         userId: hostId,
@@ -107,30 +98,25 @@ async function createRoom({ name, password, maxPlayers, hostId, hostUsername, tu
     ],
     status: "waiting",
   });
-  // Mỗi phòng mới sẽ có _id mới duy nhất được Mongoose tự động tạo
   console.log(`Đã tạo phòng mới với ID: ${room._id}, playerMarks:`, defaultPlayerMarks);
   return toJSON(room);
 }
-// Tham gia phòng
+
+// Tham gia vào phòng chơi
 async function joinRoom({ roomId, password, userId, username }) {
   const room = await Room.findById(roomId);
   if (!room) throw new Error("Phòng không tồn tại");
-  // Cho phép join lại nếu phòng đang playing (reconnect)
+  
   if (room.status === "ended") throw new Error("Phòng đã kết thúc");
   
-  // Kiểm tra xem user đã ở trong phòng chưa
   const existingPlayer = room.players.find((p) => p.userId.toString() === userId.toString());
   if (existingPlayer) {
-    // User đã ở trong phòng (có thể do reconnect)
-    // Nếu đang disconnected, đánh dấu là reconnected
     if (existingPlayer.isDisconnected) {
       existingPlayer.isDisconnected = false;
       existingPlayer.disconnectedAt = null;
       existingPlayer.sessionId = require("uuid").v4();
       await room.save();
     }
-    // User đã ở trong phòng rồi, không cần kiểm tra password nữa
-    // Chỉ cần cập nhật sessionId nếu cần
     if (!existingPlayer.isDisconnected) {
       existingPlayer.sessionId = require("uuid").v4();
       await room.save();
@@ -138,14 +124,11 @@ async function joinRoom({ roomId, password, userId, username }) {
     return toJSON(room);
   }
   
-  // Join mới - kiểm tra xem user có đang ở phòng khác không
   const otherRoom = await findRoomByUserId(userId);
   if (otherRoom && otherRoom._id.toString() !== roomId.toString()) {
-    // User đang ở phòng khác, tự động rời phòng cũ
     await leaveAllOtherRooms(userId, roomId);
   }
 
-  // Join mới - kiểm tra password (bỏ qua nếu user là host/chủ phòng)
   const isHost = room.hostId && room.hostId.toString() === userId.toString();
   if (!isHost && room.passwordHash && !(await bcrypt.compare(password || "", room.passwordHash))) {
     throw new Error("Sai mật khẩu");
@@ -163,9 +146,7 @@ async function joinRoom({ roomId, password, userId, username }) {
   room.players.push(newPlayer);
   await room.save();
   
-  // Sau khi thêm player, nếu đây là người chơi thứ 2, khởi tạo mặc định playerMarks và firstTurn
   if (room.players.length === 2) {
-    // Reload room để có dữ liệu mới nhất
     const freshRoom = await Room.findById(roomId);
     const currentPlayerMarks = freshRoom.playerMarks instanceof Map 
       ? Object.fromEntries(freshRoom.playerMarks) 
@@ -174,13 +155,11 @@ async function joinRoom({ roomId, password, userId, username }) {
     let needsUpdate = false;
     const updateData = {};
     
-    // Kiểm tra và gán playerMarks nếu chưa có
     const marksCount = Object.keys(currentPlayerMarks).filter(key => 
       currentPlayerMarks[key] === 'X' || currentPlayerMarks[key] === 'O'
     ).length;
     
     if (marksCount < 2) {
-      // Tìm chủ phòng và player còn lại
       const hostPlayer = freshRoom.players.find(p => p.isHost);
       const nonHostPlayer = freshRoom.players.find(p => !p.isHost);
       
@@ -188,7 +167,6 @@ async function joinRoom({ roomId, password, userId, username }) {
         const hostId = hostPlayer.userId.toString();
         const nonHostId = nonHostPlayer.userId.toString();
         
-        // Gán mặc định: chủ phòng = X, player còn lại = O
         if (!currentPlayerMarks[hostId] || currentPlayerMarks[hostId] !== 'X') {
           currentPlayerMarks[hostId] = 'X';
           needsUpdate = true;
@@ -205,18 +183,14 @@ async function joinRoom({ roomId, password, userId, username }) {
       }
     }
     
-    // Kiểm tra và set firstTurn nếu chưa có
     if (!freshRoom.firstTurn || (freshRoom.firstTurn !== 'X' && freshRoom.firstTurn !== 'O')) {
-      updateData.firstTurn = 'X'; // Mặc định X đi trước
+      updateData.firstTurn = 'X';
       needsUpdate = true;
       console.log(`Đã tự động khởi tạo firstTurn: X`);
     }
     
-    // Cập nhật nếu cần
     if (needsUpdate) {
       await Room.findByIdAndUpdate(roomId, updateData);
-      
-      // Reload room để có dữ liệu mới và return
       const updatedRoom = await Room.findById(roomId);
       return toJSON(updatedRoom);
     }
@@ -224,31 +198,36 @@ async function joinRoom({ roomId, password, userId, username }) {
   
   return toJSON(room);
 }
-// Rời phòng
+// Rời khỏi phòng chơi
 async function leaveRoom({ roomId, userId }) {
   const room = await Room.findById(roomId);
   if (!room) throw new Error("Phòng không tồn tại");
+  
   const playerIndex = room.players.findIndex(p => p.userId.toString() === userId.toString());
   if (playerIndex === -1) throw new Error("Bạn không ở trong phòng này");
+  
   const isHost = room.players[playerIndex].isHost;
   room.players.splice(playerIndex, 1);
+  
   if (isHost && room.players.length > 0) {
     room.players[0].isHost = true;
     room.hostId = room.players[0].userId;
   }
+  
   if (room.players.length === 0) {
     await Room.findByIdAndDelete(room._id);
-    return null; // phòng bị xóa
+    return null;
   }
+  
   await room.save();
   return toJSON(room);
 }
-// Cập nhật phòng
+
+// Cập nhật thông tin phòng
 async function updateRoom(roomId, data) {
   const room = await Room.findById(roomId);
   if (!room) throw new Error("Không tìm thấy phòng");
   
-  // Cập nhật từng field
   if (data.playerMarks !== undefined) {
     room.playerMarks = data.playerMarks;
   }
@@ -268,46 +247,47 @@ async function updateRoom(roomId, data) {
   await room.save();
   return toJSON(room);
 }
-// Toggle trạng thái Ready
+// Bật/tắt trạng thái sẵn sàng
 async function toggleReady({ roomId, isReady, userId }) {
   const room = await Room.findById(roomId);
   if (!room) throw new Error("Phòng không tồn tại");
+  
   const player = room.players.find(p => p.userId.toString() === userId.toString());
   if (!player) throw new Error("Bạn không ở trong phòng này");
   
-  // Chủ phòng không cần ready
   if (player.isHost) {
     throw new Error("Chủ phòng không cần sẵn sàng");
   }
   
   player.isReady = isReady;
-  
-  // Kiểm tra xem tất cả player (trừ chủ phòng) đã ready chưa
   const nonHostPlayers = room.players.filter(p => !p.isHost && !p.isDisconnected);
   const allNonHostReady = nonHostPlayers.length > 0 && nonHostPlayers.every(p => p.isReady);
   
   await room.save();
   return { room: await toJSON(room), started: false, allNonHostReady };
 }
-// Kết thúc trận đấu
+
+// Kết thúc trận đấu và reset phòng
 async function endGame({ roomId, result }) {
   const room = await Room.findById(roomId);
   if (!room) throw new Error("Phòng không tồn tại");
-  // Chuyển về trạng thái waiting để có thể chơi ván mới
+  
   room.status = "waiting";
-  if (result) room.result = result; // lưu kết quả nếu có
-  // Reset ready status của tất cả players
+  if (result) room.result = result;
+  
   room.players.forEach(player => {
     player.isReady = false;
   });
+  
   await room.save();
   return toJSON(room);
 }
-// Helper: Format room data cho danh sách (chỉ trả về thông tin cần thiết)
+
+// Format phòng cho danh sách (chỉ lấy thông tin cần thiết)
 async function formatRoomForList(room) {
   const roomObj = await toJSON(room);
   
-  // Chỉ trả về các thông tin cần thiết
+  // Chỉ trả về các trường cần thiết cho danh sách phòng
   return {
     _id: roomObj._id,
     name: roomObj.name,
@@ -315,40 +295,33 @@ async function formatRoomForList(room) {
     maxPlayers: roomObj.maxPlayers,
     hostId: roomObj.hostId,
     hostUsername: roomObj.players?.find(p => p.isHost)?.username || null,
-    passwordHash: roomObj.passwordHash ? true : false, // Chỉ trả về boolean, không trả về hash thực
+    passwordHash: !!roomObj.passwordHash,
     players: roomObj.players?.map(player => ({
       userId: player.userId,
       username: player.username,
       isHost: player.isHost,
       isReady: player.isReady,
-      elo: player.elo || player.score || 1000, // Thêm ELO vào danh sách phòng
-      // Không trả về: sessionId, isDisconnected, disconnectedAt, joinedAt
+      elo: player.elo || player.score || 1000,
     })) || [],
     createdAt: roomObj.createdAt,
   };
 }
 
-// Lấy danh sách tất cả phòng (chỉ trả về thông tin cần thiết)
+// Lấy danh sách tất cả phòng
 async function getAllRooms() {
   const rooms = await Room.find();
   return Promise.all(rooms.map(formatRoomForList));
 }
-// Lấy phòng theo ID
+
+// Lấy thông tin chi tiết phòng theo ID
 async function getRoomById(roomId) {
   const room = await Room.findById(roomId);
   if (!room) throw new Error("Không tìm thấy phòng");
   return toJSON(room);
 }
 
-// Xác minh mật khẩu phòng (không join vào phòng)
+// Xác minh mật khẩu phòng
 async function verifyPassword({ roomId, password, userId }) {
-  console.log("RoomService.verifyPassword được gọi:", { 
-    roomId, 
-    hasPassword: !!password, 
-    passwordLength: password?.length,
-    userId 
-  });
-  
   const room = await Room.findById(roomId);
   if (!room) {
     console.error("Không tìm thấy phòng:", roomId);
@@ -360,19 +333,18 @@ async function verifyPassword({ roomId, password, userId }) {
     throw new Error("Phòng đã kết thúc");
   }
   
-  // Nếu user là chủ phòng, không cần kiểm tra mật khẩu
+  // Chủ phòng không cần nhập mật khẩu
   if (userId && room.hostId && room.hostId.toString() === userId.toString()) {
     console.log("User là chủ phòng, bỏ qua kiểm tra mật khẩu");
     return { valid: true };
   }
   
-  // Nếu phòng không có mật khẩu, luôn đúng
+  // Phòng không có mật khẩu thì luôn cho phép
   if (!room.passwordHash) {
     console.log("Phòng không có mật khẩu");
     return { valid: true };
   }
   
-  // Kiểm tra mật khẩu
   const passwordToCheck = password || "";
   console.log("Đang so sánh mật khẩu:", { 
     providedLength: passwordToCheck.length, 
@@ -399,7 +371,7 @@ async function findRoomByUserId(userId) {
   return toJSON(room);
 }
 
-// Rời tất cả phòng khác của user (trừ phòng hiện tại)
+// Rời khỏi tất cả phòng khác của user
 async function leaveAllOtherRooms(userId, currentRoomId) {
   const rooms = await Room.find({
     "players.userId": userId,
@@ -416,7 +388,7 @@ async function leaveAllOtherRooms(userId, currentRoomId) {
   }
 }
 
-// Đánh dấu player là disconnected
+// Đánh dấu người chơi đã ngắt kết nối
 async function markPlayerDisconnected({ roomId, userId }) {
   const room = await Room.findById(roomId);
   if (!room) return null;
@@ -429,7 +401,7 @@ async function markPlayerDisconnected({ roomId, userId }) {
   return toJSON(room);
 }
 
-// Đánh dấu player là reconnected
+// Đánh dấu người chơi đã kết nối lại
 async function markPlayerReconnected({ roomId, userId, sessionId }) {
   const room = await Room.findById(roomId);
   if (!room) return null;
@@ -443,7 +415,7 @@ async function markPlayerReconnected({ roomId, userId, sessionId }) {
   return toJSON(room);
 }
 
-// Xóa player khỏi phòng (sau khi hết thời gian chờ)
+// Xóa người chơi khỏi phòng sau khi hết thời gian chờ
 async function removeDisconnectedPlayer({ roomId, userId }) {
   const room = await Room.findById(roomId);
   if (!room) return null;

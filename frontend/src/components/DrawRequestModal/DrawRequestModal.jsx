@@ -16,7 +16,6 @@ const DrawRequestModal = ({
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
       <div className="bg-white rounded-lg shadow-xl p-6 w-full max-w-md">
         {isRequester ? (
-          // Người gửi yêu cầu - chỉ hiển thị thông báo, không có nút hủy
           <>
             <h2 className="text-2xl font-bold text-gray-800 mb-2">Đang chờ phản hồi</h2>
             <p className="text-gray-600 mb-4">
@@ -27,7 +26,6 @@ const DrawRequestModal = ({
             </p>
           </>
         ) : (
-          // Người nhận yêu cầu - có thể đồng ý hoặc từ chối
           <>
             <h2 className="text-2xl font-bold text-gray-800 mb-2">Yêu cầu xin hòa</h2>
             <p className="text-gray-600 mb-4">

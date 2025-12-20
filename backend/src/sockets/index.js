@@ -1,9 +1,9 @@
 // index.js
 const { Server } = require("socket.io");
 const jwt = require("jsonwebtoken");
-const gameSocket = require("./game.socket");
+const gameSocket = require("./game");
 const chatSocket = require("./chat.socket");
-const roomSocket = require("./room.socket");
+const roomSocket = require("./room");
 const friendSocket = require("./friend.socket");
 
 function initSocket(server) {

@@ -13,12 +13,19 @@ import './index.css'
 // Cleanup token khi app khởi động
 cleanupToken()
 
+// Áp dụng theme - luôn sử dụng chế độ sáng
+const htmlElement = document.documentElement;
+
+// Luôn remove class dark và set theme thành light
+htmlElement.classList.remove('dark');
+localStorage.setItem('theme', 'light');
+
 ReactDOM.createRoot(document.getElementById('root')).render(
     <React.StrictMode>
         <Provider store={store}>
             <BrowserRouter>
                 <App />
-                <ToastContainer position="top-right" autoClose={3000} />
+                <ToastContainer position="top-right" autoClose={1000} />
             </BrowserRouter>
         </Provider>
     </React.StrictMode>,

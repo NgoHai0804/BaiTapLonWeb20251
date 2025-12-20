@@ -1,5 +1,4 @@
-// soundManager.js
-// Quản lý và phát hiệu ứng âm thanh trong toàn hệ thống
+// soundManager.js - Quản lý và phát hiệu ứng âm thanh
 
 class SoundManager {
   constructor() {
@@ -118,7 +117,7 @@ class SoundManager {
 
 export const soundManager = new SoundManager();
 
-// Helper functions
+// Hàm tiện ích
 export const playSound = (type) => {
   soundManager.playSound(type);
 };

@@ -4,19 +4,16 @@ import { toast } from 'react-toastify';
 const RoomSettingsModal = ({ isOpen, onClose, onSave, players = [], currentPlayerMarks = {}, currentTurnTimeLimit = 30, currentFirstTurn = 'X' }) => {
   const [playerMarks, setPlayerMarks] = useState({});
   const [turnTimeLimit, setTurnTimeLimit] = useState(30);
-  const [firstTurn, setFirstTurn] = useState('X'); // X hoặc O
+  const [firstTurn, setFirstTurn] = useState('X');
   const [errors, setErrors] = useState({});
 
   useEffect(() => {
     if (isOpen) {
-      // Khởi tạo state từ props
       let initialPlayerMarks = { ...currentPlayerMarks };
-      
-      // Nếu chưa có playerMarks hoặc không đủ 2 người chơi có mark, tự động gán mặc định
       const marksCount = Object.keys(initialPlayerMarks).filter(key => initialPlayerMarks[key] === 'X' || initialPlayerMarks[key] === 'O').length;
       
+      // Nếu chưa có đủ 2 người chơi được gán X/O, tự động gán mặc định
       if (players.length >= 2 && marksCount < 2) {
-        // Tìm chủ phòng và player còn lại
         const hostPlayer = players.find(p => p.isHost);
         const otherPlayer = players.find(p => !p.isHost);
         
@@ -24,7 +21,6 @@ const RoomSettingsModal = ({ isOpen, onClose, onSave, players = [], currentPlaye
           const hostId = hostPlayer.userId?.toString();
           const otherId = otherPlayer.userId?.toString();
           
-          // Gán mặc định: chủ phòng = X, player còn lại = O
           initialPlayerMarks = {};
           if (hostId) initialPlayerMarks[hostId] = 'X';
           if (otherId) initialPlayerMarks[otherId] = 'O';
@@ -42,14 +38,14 @@ const RoomSettingsModal = ({ isOpen, onClose, onSave, players = [], currentPlaye
     setPlayerMarks(prev => {
       const newMarks = { ...prev };
       
-      // Xóa mark cũ của player này nếu có
+      // Xóa mark cũ của player khác nếu đã có mark này
       Object.keys(newMarks).forEach(key => {
         if (newMarks[key] === mark && key !== playerId.toString()) {
           delete newMarks[key];
         }
       });
       
-      // Gán mark mới
+      // Gán mark mới cho player này
       if (mark) {
         newMarks[playerId.toString()] = mark;
       } else {
@@ -73,7 +69,7 @@ const RoomSettingsModal = ({ isOpen, onClose, onSave, players = [], currentPlaye
       const player1Mark = newMarks[player1Id];
       const player2Mark = newMarks[player2Id];
       
-      // Hoán đổi
+      // Hoán đổi mark giữa 2 người chơi
       if (player1Mark) newMarks[player2Id] = player1Mark;
       else delete newMarks[player2Id];
       
@@ -87,7 +83,6 @@ const RoomSettingsModal = ({ isOpen, onClose, onSave, players = [], currentPlaye
   const handleSave = () => {
     const newErrors = {};
     
-    // Validate: phải có đúng 2 người chơi được gán X và O
     const marks = Object.values(playerMarks);
     const xCount = marks.filter(m => m === 'X').length;
     const oCount = marks.filter(m => m === 'O').length;
@@ -114,26 +109,26 @@ const RoomSettingsModal = ({ isOpen, onClose, onSave, players = [], currentPlaye
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-white rounded-lg shadow-xl p-6 w-full max-w-2xl">
-        <h2 className="text-2xl font-bold text-gray-800 mb-4">Chỉnh sửa cài đặt phòng</h2>
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-3 sm:p-4 overflow-y-auto">
+      <div className="bg-white rounded-lg shadow-xl p-4 sm:p-6 w-full max-w-2xl my-auto">
+        <h2 className="text-xl sm:text-2xl font-bold text-gray-800 mb-4 sm:mb-6">Chỉnh sửa cài đặt phòng</h2>
         
         {/* Hiển thị trạng thái X/O */}
-        <div className="mb-6">
+        <div className="mb-4 sm:mb-6">
           <label className="block text-sm font-medium text-gray-700 mb-3">
             Phân bổ X/O
           </label>
           {players.length >= 2 ? (
-            <div className="flex items-center justify-between gap-4">
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-3 sm:gap-4">
               {/* Player 1 - Bên trái */}
-              <div className="flex-1 text-center">
-                <div className="p-4 bg-gray-50 rounded-lg">
-                  <div className="text-sm text-gray-600 mb-2">Người chơi 1</div>
-                  <div className="font-semibold text-lg mb-3">
+              <div className="flex-1 w-full sm:w-auto text-center">
+                <div className="p-3 sm:p-4 bg-gray-50 rounded-lg">
+                  <div className="text-xs sm:text-sm text-gray-600 mb-2">Người chơi 1</div>
+                  <div className="font-semibold text-base sm:text-lg mb-2 sm:mb-3 truncate px-2">
                     {players[0]?.nickname || players[0]?.username || 'Unknown'}
                   </div>
                   <div className="flex justify-center">
-                    <div className={`px-8 py-3 rounded-lg font-bold text-lg ${
+                    <div className={`px-6 sm:px-8 py-2 sm:py-3 rounded-lg font-bold text-base sm:text-lg ${
                       playerMarks[players[0]?.userId?.toString()] === 'X'
                         ? 'bg-blue-600 text-white'
                         : playerMarks[players[0]?.userId?.toString()] === 'O'
@@ -147,10 +142,10 @@ const RoomSettingsModal = ({ isOpen, onClose, onSave, players = [], currentPlaye
               </div>
 
               {/* Nút hoán đổi ở giữa */}
-              <div className="flex flex-col items-center gap-2">
+              <div className="flex flex-row sm:flex-col items-center gap-2 sm:gap-2 py-2 sm:py-0">
                 <button
                   onClick={handleSwapMarks}
-                  className="px-4 py-2 bg-yellow-500 text-white rounded-lg hover:bg-yellow-600 transition-colors font-semibold"
+                  className="px-3 sm:px-4 py-2 bg-yellow-500 text-white rounded-lg hover:bg-yellow-600 transition-colors font-semibold text-base sm:text-lg"
                   title="Hoán đổi X/O"
                 >
                   ⇄
@@ -159,14 +154,14 @@ const RoomSettingsModal = ({ isOpen, onClose, onSave, players = [], currentPlaye
               </div>
 
               {/* Player 2 - Bên phải */}
-              <div className="flex-1 text-center">
-                <div className="p-4 bg-gray-50 rounded-lg">
-                  <div className="text-sm text-gray-600 mb-2">Người chơi 2</div>
-                  <div className="font-semibold text-lg mb-3">
+              <div className="flex-1 w-full sm:w-auto text-center">
+                <div className="p-3 sm:p-4 bg-gray-50 rounded-lg">
+                  <div className="text-xs sm:text-sm text-gray-600 mb-2">Người chơi 2</div>
+                  <div className="font-semibold text-base sm:text-lg mb-2 sm:mb-3 truncate px-2">
                     {players[1]?.nickname || players[1]?.username || 'Unknown'}
                   </div>
                   <div className="flex justify-center">
-                    <div className={`px-8 py-3 rounded-lg font-bold text-lg ${
+                    <div className={`px-6 sm:px-8 py-2 sm:py-3 rounded-lg font-bold text-base sm:text-lg ${
                       playerMarks[players[1]?.userId?.toString()] === 'X'
                         ? 'bg-blue-600 text-white'
                         : playerMarks[players[1]?.userId?.toString()] === 'O'
@@ -180,22 +175,22 @@ const RoomSettingsModal = ({ isOpen, onClose, onSave, players = [], currentPlaye
               </div>
             </div>
           ) : (
-            <p className="text-gray-500 text-sm">Cần ít nhất 2 người chơi để phân bổ X/O</p>
+            <p className="text-gray-500 text-xs sm:text-sm">Cần ít nhất 2 người chơi để phân bổ X/O</p>
           )}
           {errors.playerMarks && (
-            <p className="mt-2 text-sm text-red-600">{errors.playerMarks}</p>
+            <p className="mt-2 text-xs sm:text-sm text-red-600">{errors.playerMarks}</p>
           )}
         </div>
 
         {/* Chọn ai đi trước */}
-        <div className="mb-6">
+        <div className="mb-4 sm:mb-6">
           <label className="block text-sm font-medium text-gray-700 mb-2">
             Ai đi trước?
           </label>
-          <div className="flex gap-4">
+          <div className="flex gap-2 sm:gap-4">
             <button
               onClick={() => setFirstTurn('X')}
-              className={`flex-1 px-4 py-3 rounded-lg font-semibold transition-colors ${
+              className={`flex-1 px-3 sm:px-4 py-2 sm:py-3 rounded-lg font-semibold text-sm sm:text-base transition-colors ${
                 firstTurn === 'X'
                   ? 'bg-blue-600 text-white'
                   : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
@@ -205,7 +200,7 @@ const RoomSettingsModal = ({ isOpen, onClose, onSave, players = [], currentPlaye
             </button>
             <button
               onClick={() => setFirstTurn('O')}
-              className={`flex-1 px-4 py-3 rounded-lg font-semibold transition-colors ${
+              className={`flex-1 px-3 sm:px-4 py-2 sm:py-3 rounded-lg font-semibold text-sm sm:text-base transition-colors ${
                 firstTurn === 'O'
                   ? 'bg-red-600 text-white'
                   : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
@@ -217,7 +212,7 @@ const RoomSettingsModal = ({ isOpen, onClose, onSave, players = [], currentPlaye
         </div>
 
         {/* Thời gian mỗi lượt */}
-        <div className="mb-6">
+        <div className="mb-4 sm:mb-6">
           <label htmlFor="turnTimeLimit" className="block text-sm font-medium text-gray-700 mb-2">
             Thời gian mỗi lượt đi (giây)
           </label>
@@ -228,31 +223,31 @@ const RoomSettingsModal = ({ isOpen, onClose, onSave, players = [], currentPlaye
             max="300"
             value={turnTimeLimit}
             onChange={(e) => setTurnTimeLimit(parseInt(e.target.value) || 30)}
-            className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 ${
+            className={`w-full px-3 sm:px-4 py-2 border rounded-lg text-sm sm:text-base focus:outline-none focus:ring-2 ${
               errors.turnTimeLimit
                 ? 'border-red-500 focus:ring-red-500'
                 : 'border-gray-300 focus:ring-blue-500'
             }`}
           />
-          <p className="mt-1 text-sm text-gray-500">
+          <p className="mt-1 text-xs sm:text-sm text-gray-500">
             Thời gian tối thiểu: 10s, tối đa: 300s
           </p>
           {errors.turnTimeLimit && (
-            <p className="mt-1 text-sm text-red-600">{errors.turnTimeLimit}</p>
+            <p className="mt-1 text-xs sm:text-sm text-red-600">{errors.turnTimeLimit}</p>
           )}
         </div>
 
         {/* Buttons */}
-        <div className="flex gap-4">
+        <div className="flex flex-col sm:flex-row gap-2 sm:gap-4">
           <button
             onClick={onClose}
-            className="flex-1 px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors"
+            className="flex-1 px-4 py-2.5 sm:py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors text-sm sm:text-base font-medium"
           >
             Hủy
           </button>
           <button
             onClick={handleSave}
-            className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+            className="flex-1 px-4 py-2.5 sm:py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm sm:text-base font-medium"
           >
             Lưu
           </button>

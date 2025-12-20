@@ -8,7 +8,6 @@ export const chatApi = {
 
   getPrivateChat: async (userId) => {
     const response = await apiClient.get(`/api/chat/private/${userId}`);
-    // Backend trả về { success: true, message, data }
     return response.data.data || response.data;
   },
 

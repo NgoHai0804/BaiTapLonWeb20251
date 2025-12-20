@@ -15,13 +15,33 @@ const ChatBox = ({ roomId }) => {
   const messagesContainerRef = useRef(null);
 
   // Cuộn xuống cuối khi có tin nhắn mới
-  const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  const scrollToBottom = (smooth = true) => {
+    if (messagesEndRef.current && messagesContainerRef.current) {
+      const container = messagesContainerRef.current;
+      const endElement = messagesEndRef.current;
+      
+      if (smooth) {
+        endElement.scrollIntoView({ behavior: 'smooth', block: 'end' });
+      } else {
+        container.scrollTop = container.scrollHeight;
+      }
+    }
   };
 
   // Tự động cuộn xuống khi có tin nhắn mới
   useEffect(() => {
-    scrollToBottom();
+    if (messages.length > 0) {
+      let timer;
+      requestAnimationFrame(() => {
+        timer = setTimeout(() => {
+          scrollToBottom(true);
+        }, 100);
+      });
+      
+      return () => {
+        if (timer) clearTimeout(timer);
+      };
+    }
   }, [messages]);
 
   // Tải lịch sử chat khi component được mount
@@ -40,6 +60,8 @@ const ChatBox = ({ roomId }) => {
       if (data.roomId === roomId) {
         dispatch(setMessages(data.messages || []));
         dispatch(markAllAsRead());
+        // Cuộn xuống cuối sau khi tải lịch sử
+        setTimeout(() => scrollToBottom(true), 300);
       }
     };
 
@@ -57,7 +79,12 @@ const ChatBox = ({ roomId }) => {
           createdAt: messageData.createdAt,
           timestamp: messageData.timestamp,
         }));
-        scrollToBottom();
+        // Tự động cuộn sau khi thêm tin nhắn mới
+        requestAnimationFrame(() => {
+          setTimeout(() => {
+            scrollToBottom(true);
+          }, 150);
+        });
       }
     };
 
@@ -89,37 +116,54 @@ const ChatBox = ({ roomId }) => {
       type: 'text',
     });
 
-    // Xóa input và phát âm thanh
     setInputMessage('');
     playSound('message');
   };
 
-  // Định dạng thời gian hiển thị
+  // Format thời gian
   const formatTime = (timestamp) => {
     if (!timestamp) return '';
     const date = new Date(timestamp);
     return date.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' });
   };
 
-  // Kiểm tra xem tin nhắn có phải của mình không
+  // Kiểm tra tin nhắn có phải của mình không
   const isMyMessage = (senderId) => {
     const userId = user?.id || user?._id;
     return (senderId?.toString() === userId?.toString());
   };
 
   return (
-    <div className="bg-white rounded-lg shadow flex flex-col h-96">
-      <div className="p-3 border-b border-gray-200">
-        <h3 className="text-lg font-semibold">Chat phòng</h3>
+    <div 
+      className="bg-white rounded-lg shadow flex flex-col overflow-hidden max-h-[70vh] sm:max-h-full" 
+      style={{ 
+        height: '100%', 
+        minHeight: 0,
+        display: 'flex', 
+        flexDirection: 'column',
+        position: 'relative'
+      }}
+    >
+      <div className="pt-2 sm:pt-3 px-3 pb-3 border-b border-gray-200" style={{ flexShrink: 0, flexGrow: 0 }}>
+        <h3 className="text-sm sm:text-base font-semibold">Chat phòng</h3>
       </div>
       
       <div 
         ref={messagesContainerRef}
-        className="flex-1 overflow-y-auto p-3 space-y-2"
-        style={{ maxHeight: '300px' }}
+        className="p-3 space-y-2"
+        style={{ 
+          flex: '1 1 0%',
+          minHeight: 0,
+          maxHeight: '100%',
+          height: 0,
+          overflowY: 'auto',
+          overflowX: 'hidden',
+          WebkitOverflowScrolling: 'touch',
+          position: 'relative'
+        }}
       >
         {messages.length === 0 ? (
-          <div className="text-center text-gray-500 text-sm py-4">
+          <div className="text-center text-gray-500 text-sm py-8">
             Chưa có tin nhắn nào. Hãy bắt đầu trò chuyện!
           </div>
         ) : (
@@ -131,21 +175,29 @@ const ChatBox = ({ roomId }) => {
                 className={`flex ${myMessage ? 'justify-end' : 'justify-start'}`}
               >
                 <div
-                  className={`max-w-xs lg:max-w-md px-3 py-2 rounded-lg ${
+                  className={`max-w-[75%] sm:max-w-xs lg:max-w-md px-3 py-2 rounded-lg ${
                     myMessage
                       ? 'bg-blue-600 text-white'
                       : 'bg-gray-100 text-gray-800'
                   }`}
                 >
-                  {!myMessage && (
-                    <div className="text-xs font-semibold mb-1 opacity-75">
-                      {msg.sender?.nickname || msg.sender?.username || 'Người chơi'}
+                  {!myMessage ? (
+                    <div className="flex items-center justify-between gap-2 mb-1">
+                      <span className="text-xs font-semibold opacity-75">
+                        {msg.sender?.nickname || msg.sender?.username || 'Người chơi'}
+                      </span>
+                      <span className="text-xs opacity-60">
+                        {formatTime(msg.timestamp || msg.createdAt)}
+                      </span>
+                    </div>
+                  ) : (
+                    <div className="flex items-center justify-end mb-1">
+                      <span className="text-xs opacity-75">
+                        {formatTime(msg.timestamp || msg.createdAt)}
+                      </span>
                     </div>
                   )}
                   <div className="text-sm break-words">{msg.message}</div>
-                  <div className={`text-xs mt-1 ${myMessage ? 'text-blue-100' : 'text-gray-500'}`}>
-                    {formatTime(msg.timestamp || msg.createdAt)}
-                  </div>
                 </div>
               </div>
             );
@@ -154,20 +206,20 @@ const ChatBox = ({ roomId }) => {
         <div ref={messagesEndRef} />
       </div>
 
-      <form onSubmit={handleSendMessage} className="p-3 border-t border-gray-200">
+      <form onSubmit={handleSendMessage} className="p-3 border-t border-gray-200" style={{ flexShrink: 0, flexGrow: 0 }}>
         <div className="flex gap-2">
           <input
             type="text"
             value={inputMessage}
             onChange={(e) => setInputMessage(e.target.value)}
             placeholder="Nhập tin nhắn..."
-            className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
             maxLength={500}
           />
           <button
             type="submit"
             disabled={!inputMessage.trim()}
-            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-sm whitespace-nowrap"
           >
             Gửi
           </button>

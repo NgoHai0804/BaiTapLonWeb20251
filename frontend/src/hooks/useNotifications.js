@@ -15,16 +15,16 @@ export const useNotifications = () => {
   useEffect(() => {
     if (!user) return;
 
-    // Lắng nghe tin nhắn mới (chỉ khi không ở trong chat với người đó)
+    // Lắng nghe tin nhắn mới
     const handleNewMessage = (messageData) => {
       const userId = user?.id || user?._id;
       const senderId = messageData.senderId?._id || messageData.senderId;
       const receiverId = messageData.receiverId?._id || messageData.receiverId;
       const userStr = userId?.toString();
 
-      // Chỉ hiển thị notification nếu tin nhắn gửi cho user này và không phải từ chính user
+      // Chỉ hiển thị notification nếu tin nhắn gửi cho user này
       if (receiverId?.toString() === userStr && senderId?.toString() !== userStr) {
-        // Kiểm tra xem có đang ở trong chat với người gửi không
+        // Kiểm tra có đang ở trong chat với người gửi không
         const isInChatWithSender = location.pathname === `/chat/${senderId?.toString()}`;
         
         if (!isInChatWithSender) {
@@ -41,7 +41,7 @@ export const useNotifications = () => {
             timestamp: messageData.timestamp || messageData.createdAt,
           }));
 
-          // Phát âm thanh nếu được bật
+          // Phát âm thanh
           const soundEnabled = localStorage.getItem('soundEnabled') !== 'false';
           if (soundEnabled) {
             playSound('message');
@@ -55,7 +55,6 @@ export const useNotifications = () => {
 
     // Lắng nghe lời mời kết bạn mới
     const handleFriendRequest = (requestData) => {
-      console.log('Đã nhận thông báo lời mời kết bạn:', requestData);
       const requester = requestData.requester || {};
       dispatch(addNotification({
         type: 'friend_request',
@@ -78,7 +77,6 @@ export const useNotifications = () => {
 
     // Lắng nghe lời mời vào phòng
     const handleRoomInvite = (inviteData) => {
-      console.log('Đã nhận thông báo lời mời vào phòng:', inviteData);
       const inviter = inviteData.inviter || {};
       dispatch(addNotification({
         type: 'room_invite',

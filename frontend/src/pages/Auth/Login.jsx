@@ -1,5 +1,4 @@
-// Login.jsx
-// Trang đăng nhập người dùng
+// Login - Trang đăng nhập
 
 import { useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
@@ -70,6 +69,7 @@ function Login() {
           avatarUrl: data.avatarUrl,
         },
         token: data.token,
+        refreshToken: data.refreshToken,
       }));
 
       toast.success('Đăng nhập thành công!');
@@ -82,8 +82,8 @@ function Login() {
 
   return (
     <div>
-      <h2 className="text-3xl font-bold text-gray-800 mb-2 text-center">Đăng Nhập</h2>
-      <p className="text-gray-600 text-center mb-6">Chào mừng bạn trở lại!</p>
+      <h2 className="text-2xl sm:text-3xl font-bold text-gray-800 mb-2 text-center">Đăng Nhập</h2>
+      <p className="text-sm sm:text-base text-gray-600 text-center mb-4 sm:mb-6">Chào mừng bạn trở lại!</p>
 
       <form onSubmit={handleSubmit} className="space-y-4">
         {/* Username */}

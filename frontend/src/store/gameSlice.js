@@ -11,7 +11,8 @@ const initialState = {
   isGameOver: false,
   isDraw: false,
   history: [],
-  lastMove: null, // Lưu nước đi cuối cùng để highlight
+  lastMove: null,
+  winningCells: [],
   timer: null,
   roomId: null,
 };
@@ -42,6 +43,7 @@ const gameSlice = createSlice({
     setWinner: (state, action) => {
       state.winner = action.payload.winner;
       state.winnerMark = action.payload.winnerMark;
+      state.winningCells = action.payload.winningCells || [];
       state.isGameOver = true;
       state.isDraw = false;
     },
@@ -49,6 +51,7 @@ const gameSlice = createSlice({
       state.isGameOver = true;
       state.isDraw = true;
       state.winner = null;
+      state.winningCells = [];
     },
     resetGame: (state) => {
       state.board = Array(BOARD_SIZE).fill(null).map(() => Array(BOARD_SIZE).fill(null));
@@ -60,6 +63,7 @@ const gameSlice = createSlice({
       state.isDraw = false;
       state.history = [];
       state.lastMove = null;
+      state.winningCells = [];
     },
     undoMove: (state, action) => {
       const { board, turn, currentPlayerIndex, history } = action.payload;
@@ -76,6 +80,9 @@ const gameSlice = createSlice({
     },
     clearGame: (state) => {
       return initialState;
+    },
+    setWinningCells: (state, action) => {
+      state.winningCells = action.payload;
     },
     setLastMove: (state, action) => {
       state.lastMove = action.payload;
@@ -95,5 +102,6 @@ export const {
   setPlayers,
   clearGame,
   setLastMove,
+  setWinningCells,
 } = gameSlice.actions;
 export default gameSlice.reducer;

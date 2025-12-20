@@ -1,22 +1,10 @@
-// friend.controller.js
-// Quản lý quan hệ bạn bè giữa người chơi.
-
-// Chức năng:
-// 1. Lấy danh sách bạn bè  RESTful
-// 2. Gửi lời mời kết bạn RESTful
-// 3. Lấy danh sách lời mời RESTful
-// 4. Chấp nhận/ Hủy lời mời RESTful
-// 5. Tìm bạn bè theo username RESTful
-// 6. Hủy kết bạn RESTful
+// friend.controller.js - xử lý request quan hệ bạn bè
 
 
 const friendService = require("../services/friend.service");
-console.log(friendService);
 const response = require("../utils/response");
 
-// ============================================
 // Lấy danh sách bạn bè
-// ============================================
 async function getFriends(req, res) {
   try {
     const userId = req.user._id;
@@ -28,9 +16,7 @@ async function getFriends(req, res) {
   }
 }
 
-// ============================================
 // Gửi lời mời kết bạn
-// ============================================
 async function sendRequest(req, res) {
   try {
     if (!req.user || !req.user._id) {
@@ -52,9 +38,7 @@ async function sendRequest(req, res) {
 }
 
 
-// ============================================
-// Lấy danh sách lời mời
-// ============================================
+// Lấy danh sách lời mời kết bạn đang chờ
 async function getRequests(req, res) {
   try {
     const userId = req.user._id;
@@ -66,9 +50,7 @@ async function getRequests(req, res) {
   }
 }
 
-// ============================================
 // Chấp nhận lời mời kết bạn
-// ============================================
 async function acceptRequest(req, res) {
   try {
     const userId = req.user._id;
@@ -82,9 +64,7 @@ async function acceptRequest(req, res) {
   }
 }
 
-// ============================================
-// Hủy lời mời hoặc từ chối
-// ============================================
+// Hủy hoặc từ chối lời mời kết bạn
 async function cancelRequest(req, res) {
   try {
     const userId = req.user._id;
@@ -99,22 +79,18 @@ async function cancelRequest(req, res) {
   }
 }
 
-// ============================================
-// Tìm bạn bè theo nickname
-// ============================================
+// Tìm kiếm người dùng
 async function searchUser(req, res) {
   try {
-    const { nickname, userID } = req.body; // Hoặc req.query nếu từ GET
+    const { nickname, userID } = req.body;
     const excludeUserId = req.user._id;
     if ((!nickname || nickname.trim() === '') && (!userID)) {
       return response.error(res, "Thiếu tham số tìm kiếm (nickname hoặc userID)", 400);
     }
-    // Tránh lỗi trim() nếu nickname undefined/null
     const searchNickname = nickname ? nickname.trim() : null;
     const users = await friendService.searchUsers(searchNickname, userID, excludeUserId);
-    console.log(users);
     if (users.length === 0) {
-      return response.success(res, [], "Không tìm thấy User phù hợp"); // Trả success với empty để linh hoạt
+      return response.success(res, [], "Không tìm thấy User phù hợp");
     }
     return response.success(res, users, "Tìm kiếm thành công");
   } catch (err) {
@@ -123,9 +99,7 @@ async function searchUser(req, res) {
   }
 }
 
-// ============================================
-// Hủy kết bạn
-// ============================================
+// Xóa bạn bè
 async function removeFriend(req, res) {
   try {
     const userId = req.user._id;
@@ -139,9 +113,6 @@ async function removeFriend(req, res) {
   }
 }
 
-// ============================================
-// Export toàn bộ controller
-// ============================================
 module.exports = {
   getFriends,
   sendRequest,

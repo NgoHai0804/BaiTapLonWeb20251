@@ -1,11 +1,10 @@
 // bot.controller.js
-// Controller cho AI Bot
-
+// Controller xử lý request liên quan đến AI Bot (tính nước đi cho bot)
 const response = require("../utils/response");
 const aiBotService = require("../services/aiBot.service");
 const logger = require("../utils/logger");
 
-// Lấy nước đi tốt nhất của bot
+// Tính toán và trả về nước đi tốt nhất cho bot dựa trên bàn cờ hiện tại và độ khó
 async function getBotMove(req, res) {
   try {
     const { board, botMark, difficulty = 'medium', lastMove } = req.body;

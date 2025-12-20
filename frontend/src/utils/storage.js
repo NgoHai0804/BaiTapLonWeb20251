@@ -1,5 +1,4 @@
-// storage.js
-// Wrapper cho localStorage
+// storage.js - Bọc localStorage
 
 export const storage = {
   set(key, value) {
@@ -63,6 +62,7 @@ export const storage = {
 // Keys
 export const STORAGE_KEYS = {
   TOKEN: 'auth_token',
+  REFRESH_TOKEN: 'refresh_token',
   USER: 'user_data',
   SETTINGS: 'user_settings',
 };

@@ -1,6 +1,4 @@
-// useGameRoomLobby.js
 // Hook xử lý logic trước khi chơi (lobby)
-// Bao gồm: ready, start game, room settings
 
 import { useCallback } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
@@ -10,7 +8,7 @@ import { updateRoom } from '../store/roomSlice';
 import { setRoom } from '../store/gameSlice';
 import { useAuth } from './useAuth';
 
-export const useGameRoomLobby = (roomId, currentRoom) => {
+export const useGameRoomLobby = (roomId, currentRoom, onPlayerKicked) => {
   const dispatch = useDispatch();
   const { user } = useAuth();
 
@@ -30,13 +28,11 @@ export const useGameRoomLobby = (roomId, currentRoom) => {
         currentRoom: currentRoom?._id,
       });
       if (!currentRoom) {
-        console.log('Đang thử tham gia lại phòng...');
         gameSocket.joinRoom(roomId, '');
       }
       return;
     }
     
-    console.log('Đang chuyển đổi trạng thái sẵn sàng:', { userId, roomId, currentReady: player.isReady });
     if (player?.isReady) {
       gameSocket.playerReady(roomId, false);
     } else {
@@ -65,17 +61,13 @@ export const useGameRoomLobby = (roomId, currentRoom) => {
   // Socket event handlers cho lobby
   const setupLobbyListeners = useCallback(() => {
     const handlePlayerReadyStatus = (data) => {
-      console.log('Trạng thái sẵn sàng của người chơi đã được cập nhật:', { 
-        roomId, 
-        players: data.room.players?.length 
-      });
       dispatch(updateRoom(data.room));
       dispatch(setRoom({ roomId, players: data.room.players }));
       
       if (data.message) {
         toast.info(data.message, {
-          position: "top-center",
-          autoClose: 2000,
+          position: "top-right",
+          autoClose: 1000,
         });
       }
     };
@@ -90,7 +82,6 @@ export const useGameRoomLobby = (roomId, currentRoom) => {
       const errorMessage = data.message || data.error || 'Không thể bắt đầu game';
       toast.error(errorMessage);
       if (data.error) {
-        console.error('Chi tiết lỗi:', data.error);
       }
     };
 
@@ -98,8 +89,8 @@ export const useGameRoomLobby = (roomId, currentRoom) => {
       console.log('Cài đặt phòng đã được cập nhật:', data);
       dispatch(updateRoom(data.room));
       toast.success(data.message || 'Cài đặt phòng đã được cập nhật!', {
-        position: "top-center",
-        autoClose: 3000,
+        position: "top-right",
+        autoClose: 1000,
       });
     };
 
@@ -108,12 +99,36 @@ export const useGameRoomLobby = (roomId, currentRoom) => {
       toast.error(data.message || 'Không thể cập nhật cài đặt phòng');
     };
 
-    // Register listeners
+    const handleKickSuccess = (data) => {
+      toast.success(data.message || 'Đã đuổi người chơi ra khỏi phòng', {
+        position: "top-right",
+        autoClose: 1000,
+      });
+    };
+
+    const handleKickError = (data) => {
+      console.error('Lỗi khi đuổi người chơi:', data);
+      toast.error(data.message || 'Không thể đuổi người chơi');
+    };
+
+    const handlePlayerKicked = (data) => {
+      toast.error(data.message || 'Bạn đã bị đuổi khỏi phòng bởi chủ phòng', {
+        position: "top-right",
+        autoClose: 1000,
+      });
+      if (onPlayerKicked) {
+        onPlayerKicked(data);
+      }
+    };
+
     gameSocket.onPlayerReadyStatus(handlePlayerReadyStatus);
     gameSocket.onReadyError(handleReadyError);
     gameSocket.onStartError(handleStartError);
     gameSocket.onRoomSettingsUpdated(handleRoomSettingsUpdated);
     gameSocket.onRoomSettingsError(handleRoomSettingsError);
+    gameSocket.onKickSuccess(handleKickSuccess);
+    gameSocket.onKickError(handleKickError);
+    gameSocket.onPlayerKicked(handlePlayerKicked);
 
     return () => {
       gameSocket.offPlayerReadyStatus(handlePlayerReadyStatus);
@@ -121,8 +136,11 @@ export const useGameRoomLobby = (roomId, currentRoom) => {
       gameSocket.offStartError(handleStartError);
       gameSocket.offRoomSettingsUpdated(handleRoomSettingsUpdated);
       gameSocket.offRoomSettingsError(handleRoomSettingsError);
+      gameSocket.offKickSuccess(handleKickSuccess);
+      gameSocket.offKickError(handleKickError);
+      gameSocket.offPlayerKicked(handlePlayerKicked);
     };
-  }, [roomId, dispatch]);
+  }, [roomId, dispatch, onPlayerKicked]);
 
   return {
     handleReady,

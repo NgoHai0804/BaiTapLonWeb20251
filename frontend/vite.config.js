@@ -16,8 +16,6 @@ export default defineConfig({
     strictPort: false,
     // Cho phép các host ngrok
     allowedHosts: [
-      '5ab76e29a5b1.ngrok-free.app',
-      '6b58ee547915.ngrok-free.app', // Ngrok URL mới
       'localhost',
       '.ngrok-free.app', // Cho phép tất cả subdomain ngrok
       '.ngrok.io', // Cho phép tất cả subdomain ngrok cũ

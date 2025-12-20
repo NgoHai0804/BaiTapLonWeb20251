@@ -1,9 +1,6 @@
 // jwt.js
-
-// Thiết lập và hỗ trợ xử lý token JWT.
-
-// Nhiệm vụ:
-
-// Lưu secret key, thời hạn token.
-
-// Hàm tạo (signToken) và kiểm tra (verifyToken) JWT.
+// File cấu hình JWT (hiện tại logic JWT đã được chuyển sang utils/jwt.js)
+// 
+// Nhiệm vụ (nếu cần):
+// - Lưu secret key, thời hạn token
+// - Export các hàm tạo và kiểm tra JWT token

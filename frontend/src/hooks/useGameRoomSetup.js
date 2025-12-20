@@ -1,8 +1,6 @@
-// useGameRoomSetup.js
-// Hook xử lý việc setup và join vào phòng (trước khi chơi)
-// Bao gồm: kiểm tra phòng, xử lý password, reconnect
+// Hook xử lý việc setup và join vào phòng
 
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
 import { toast } from 'react-toastify';
@@ -30,8 +28,9 @@ export const useGameRoomSetup = (roomId) => {
   const [playerMarks, setPlayerMarks] = useState({});
   const [turnTimeLimit, setTurnTimeLimit] = useState(30);
   const [firstTurn, setFirstTurn] = useState('X');
+  const getGameStateRequestedRef = useRef(false);
 
-  // Helper function để cập nhật user ELO từ room players
+  // Cập nhật ELO từ room players
   const updateUserEloFromRoom = useCallback((room) => {
     if (!room?.players || !user) return;
     
@@ -55,13 +54,11 @@ export const useGameRoomSetup = (roomId) => {
             updatedGameStats.push({ gameId: 'caro', score: newElo });
           }
           dispatch(updateProfile({ gameStats: updatedGameStats }));
-          console.log('Đã cập nhật ELO user từ phòng:', newElo);
         }
       } else {
         dispatch(updateProfile({ 
           gameStats: [{ gameId: 'caro', score: newElo }] 
         }));
-        console.log('Đã tạo ELO user từ phòng:', newElo);
       }
     }
   }, [user, dispatch]);
@@ -69,7 +66,6 @@ export const useGameRoomSetup = (roomId) => {
   // Tự động set hasJoined nếu đã có currentRoom
   useEffect(() => {
     if (currentRoom && currentRoom._id?.toString() === roomId && !hasJoined) {
-      console.log('Tự động set hasJoined từ currentRoom');
       setHasJoined(true);
       if (!roomInfo) {
         setRoomInfo(currentRoom);
@@ -77,12 +73,11 @@ export const useGameRoomSetup = (roomId) => {
     }
   }, [currentRoom, roomId, hasJoined, roomInfo]);
 
-  // Kiểm tra phòng và xử lý password - chỉ chạy 1 lần khi mount
+  // Kiểm tra phòng và xử lý password
   useEffect(() => {
     if (hasJoined || isJoining) return;
 
     if (currentRoom && currentRoom._id?.toString() === roomId) {
-      console.log('Đã có currentRoom, không cần check lại');
       setRoomInfo(currentRoom);
       setHasJoined(true);
       setIsJoining(false);
@@ -100,11 +95,44 @@ export const useGameRoomSetup = (roomId) => {
       setIsJoining(true);
 
       try {
+        const socket = socketClient.getSocket();
+        if (!socket || !socket.connected) {
+          console.log('Socket chưa kết nối, đang đợi kết nối...');
+          let retryCount = 0;
+          const maxRetries = 10;
+          const waitForSocket = () => {
+            return new Promise((resolve, reject) => {
+              const checkSocket = () => {
+                const currentSocket = socketClient.getSocket();
+                if (currentSocket && currentSocket.connected) {
+                  resolve();
+                } else if (retryCount >= maxRetries) {
+                  reject(new Error('Socket không thể kết nối'));
+                } else {
+                  retryCount++;
+                  setTimeout(checkSocket, 500);
+                }
+              };
+              checkSocket();
+            });
+          };
+          
+          try {
+            await waitForSocket();
+            console.log('Socket đã kết nối, tiếp tục join room');
+          } catch (error) {
+            console.error('Lỗi khi đợi socket kết nối:', error);
+            toast.error('Không thể kết nối với server');
+            navigate('/lobby');
+            setIsJoining(false);
+            return;
+          }
+        }
+
         const userRoomCheck = await roomApi.checkUserRoom();
         const isUserInThisRoom = userRoomCheck?.inRoom && userRoomCheck?.room?._id?.toString() === roomId;
 
         if (isUserInThisRoom) {
-          console.log('User đã ở trong phòng, đang tự động kết nối lại...');
           setRoomInfo(userRoomCheck.room);
           gameSocket.joinRoom(roomId, '');
           setIsJoining(false);
@@ -129,7 +157,6 @@ export const useGameRoomSetup = (roomId) => {
         const isHost = room.hostId && room.hostId.toString() === userId?.toString();
 
         if (isHost) {
-          console.log('User là chủ phòng, tham gia không cần mật khẩu');
           gameSocket.joinRoom(roomId, '');
           setIsJoining(false);
           return;
@@ -171,14 +198,6 @@ export const useGameRoomSetup = (roomId) => {
 
   // Xử lý password modal submit
   const handlePasswordSubmit = async (password) => {
-    console.log('handlePasswordSubmit được gọi', { 
-      roomId, 
-      hasRoomInfo: !!roomInfo, 
-      isJoining, 
-      hasJoined,
-      passwordLength: password?.length,
-      hasPassword: !!password 
-    });
     
     if (isJoining || hasJoined) {
       throw new Error('Đang xử lý, vui lòng đợi...');
@@ -198,41 +217,18 @@ export const useGameRoomSetup = (roomId) => {
     }
 
     if (!roomInfo) {
-      console.log('Không có roomInfo, đang thử tải lại...');
-      try {
-        const rooms = await roomApi.getRooms();
-        const roomData = Array.isArray(rooms) 
-          ? rooms.find(r => (r._id === roomId) || (r._id?.toString() === roomId))
-          : null;
-        
-        if (roomData) {
-          console.log('Đã tải dữ liệu phòng:', roomData._id);
-          setRoomInfo(roomData);
-        } else {
-          console.warn('Không tìm thấy phòng trong danh sách, nhưng vẫn tiếp tục xác thực...');
-        }
-      } catch (error) {
-        console.error('Lỗi khi tải thông tin phòng:', error);
-      }
+      console.warn('Không có thông tin phòng, có thể phòng đã bị xóa');
     }
 
     setIsJoining(true);
     
     try {
-      console.log('Đang xác thực mật khẩu cho phòng:', roomId, 'độ dài mật khẩu:', password?.length);
       await roomApi.verifyPassword(roomId, password || '');
-      console.log('Xác thực mật khẩu thành công');
       setShowPasswordModal(false);
       gameSocket.joinRoom(roomId, password || '');
-      console.log('Đã gọi socket join room');
     } catch (error) {
       setIsJoining(false);
       console.error('Xác thực mật khẩu thất bại:', error);
-      console.error('Chi tiết lỗi:', {
-        message: error.message,
-        response: error.response?.data,
-        status: error.response?.status
-      });
       const errorMessage = error.response?.data?.message || error.message || 'Mật khẩu không đúng';
       throw new Error(errorMessage);
     }
@@ -243,11 +239,10 @@ export const useGameRoomSetup = (roomId) => {
     navigate('/lobby');
   };
 
-  // Socket event handlers cho setup
+  // Xử lý socket events
   useEffect(() => {
     const handleReconnectCheck = (data) => {
       if (data.inRoom && data.room) {
-        console.log('Kiểm tra kết nối lại: User đang ở trong phòng', data.room._id, 'gameState:', data.gameState);
         if (!hasJoined || currentRoom?._id !== data.room._id) {
           dispatch(setCurrentRoom(data.room));
           dispatch(setRoom({ roomId: data.room._id, players: data.room.players || [] }));
@@ -271,10 +266,13 @@ export const useGameRoomSetup = (roomId) => {
               roomId: data.room._id,
               players: data.room.players || [],
             }));
-          } else if (data.room.status === ROOM_STATUS.PLAYING && !data.gameState) {
-            console.log('Game đang chơi nhưng không có game state, đang tải lại...');
+          } else if (data.room.status === ROOM_STATUS.PLAYING && !data.gameState && !getGameStateRequestedRef.current) {
+            getGameStateRequestedRef.current = true;
             setTimeout(() => {
               gameSocket.getGameState(data.room._id);
+              setTimeout(() => {
+                getGameStateRequestedRef.current = false;
+              }, 2000);
             }, 500);
           }
           
@@ -286,7 +284,6 @@ export const useGameRoomSetup = (roomId) => {
 
     const handleReconnectSuccess = (data) => {
       const room = data.room || data;
-      console.log('Kết nối lại thành công:', room._id, 'gameState:', data.gameState);
       if (!hasJoined || currentRoom?._id !== room._id) {
         dispatch(setCurrentRoom(room));
         dispatch(setRoom({ roomId: room._id, players: room.players || [] }));
@@ -310,10 +307,13 @@ export const useGameRoomSetup = (roomId) => {
             roomId: room._id,
             players: room.players || [],
           }));
-        } else if (room.status === ROOM_STATUS.PLAYING && !data.gameState) {
-          console.log('Game đang chơi nhưng không có game state, đang tải lại...');
+        } else if (room.status === ROOM_STATUS.PLAYING && !data.gameState && !getGameStateRequestedRef.current) {
+          getGameStateRequestedRef.current = true;
           setTimeout(() => {
             gameSocket.getGameState(room._id);
+            setTimeout(() => {
+              getGameStateRequestedRef.current = false;
+            }, 2000);
           }, 500);
         }
         
@@ -324,14 +324,6 @@ export const useGameRoomSetup = (roomId) => {
 
     const handleJoinSuccess = (data) => {
       const room = data.room || data;
-      console.log('Tham gia thành công:', { 
-        roomId, 
-        room: room._id, 
-        players: room.players?.length,
-        playerIds: room.players?.map(p => p.userId?.toString()),
-        playerMarks: room.playerMarks,
-        firstTurn: room.firstTurn
-      });
       dispatch(setCurrentRoom(room));
       dispatch(setRoom({ roomId, players: room.players || [] }));
       updateUserEloFromRoom(room);
@@ -341,15 +333,22 @@ export const useGameRoomSetup = (roomId) => {
           ? Object.fromEntries(room.playerMarks) 
           : room.playerMarks;
         setPlayerMarks(playerMarksObj);
-        console.log('Đã cập nhật playerMarks từ phòng:', playerMarksObj);
       }
       if (room.firstTurn) {
         setFirstTurn(room.firstTurn);
-        console.log('Đã cập nhật firstTurn từ phòng:', room.firstTurn);
       }
       if (room.turnTimeLimit) {
         setTurnTimeLimit(room.turnTimeLimit);
-        console.log('Đã cập nhật turnTimeLimit từ phòng:', room.turnTimeLimit);
+      }
+      
+      if (room.status === ROOM_STATUS.PLAYING && !getGameStateRequestedRef.current) {
+        getGameStateRequestedRef.current = true;
+        setTimeout(() => {
+          gameSocket.getGameState(roomId);
+          setTimeout(() => {
+            getGameStateRequestedRef.current = false;
+          }, 2000);
+        }, 300);
       }
       
       setShowPasswordModal(false);
@@ -372,7 +371,6 @@ export const useGameRoomSetup = (roomId) => {
     };
 
     const handleRoomUpdate = (data) => {
-      console.log('Cập nhật phòng:', { roomId, players: data.room.players?.length, room: data.room._id });
       dispatch(updateRoom(data.room));
       dispatch(setRoom({ roomId, players: data.room.players }));
       updateUserEloFromRoom(data.room);
@@ -392,13 +390,12 @@ export const useGameRoomSetup = (roomId) => {
     };
 
     const handlePlayerJoined = (data) => {
-      console.log('Người chơi đã tham gia:', { roomId, players: data.room.players?.length });
       dispatch(updateRoom(data.room));
       dispatch(setRoom({ roomId, players: data.room.players }));
       const playerName = data.nickname || data.username || 'Người chơi';
       toast.info(data.message || `${playerName} đã tham gia phòng`, {
         position: "top-right",
-        autoClose: 3000,
+        autoClose: 1000,
       });
     };
 
@@ -408,7 +405,7 @@ export const useGameRoomSetup = (roomId) => {
       const playerName = data.nickname || data.username || 'Người chơi';
       toast.warning(data.message || `${playerName} đã rời phòng`, {
         position: "top-right",
-        autoClose: 3000,
+        autoClose: 1000,
       });
     };
 
@@ -427,7 +424,7 @@ export const useGameRoomSetup = (roomId) => {
       navigate('/lobby');
     };
 
-    // Register listeners
+    // Đăng ký listeners
     gameSocket.onJoinSuccess(handleJoinSuccess);
     gameSocket.onJoinError(handleJoinError);
     gameSocket.onRoomUpdate(handleRoomUpdate);
@@ -439,10 +436,8 @@ export const useGameRoomSetup = (roomId) => {
     gameSocket.onReconnectSuccess(handleReconnectSuccess);
     gameSocket.onRoomDeleted(handleRoomDeleted);
 
-    // Kiểm tra reconnect khi socket kết nối
     const socket = socketClient.getSocket();
     if (socket && socket.connected && !hasCheckedReconnect && !hasJoined && !isJoining) {
-      console.log('Đang kiểm tra kết nối lại...');
       setHasCheckedReconnect(true);
       setTimeout(() => {
         if (!hasJoined && !isJoining) {
@@ -452,12 +447,14 @@ export const useGameRoomSetup = (roomId) => {
     }
 
     const reconnectCallback = () => {
-      console.log('Socket đã kết nối lại, đang kiểm tra phòng và game state...');
       setTimeout(() => {
         gameSocket.checkReconnect();
-        if (hasJoined && currentRoom?.status === ROOM_STATUS.PLAYING) {
-          console.log('Game đang chơi, đang tải game state...');
+        if (hasJoined && currentRoom?.status === ROOM_STATUS.PLAYING && !getGameStateRequestedRef.current) {
+          getGameStateRequestedRef.current = true;
           gameSocket.getGameState(roomId);
+          setTimeout(() => {
+            getGameStateRequestedRef.current = false;
+          }, 2000);
         }
       }, 500);
     };
@@ -465,7 +462,6 @@ export const useGameRoomSetup = (roomId) => {
     socketClient.onReconnect(reconnectCallback);
 
     return () => {
-      console.log('Đang dọn dẹp socket listeners cho useGameRoomSetup');
       try {
         gameSocket.offJoinSuccess(handleJoinSuccess);
         gameSocket.offJoinError(handleJoinError);

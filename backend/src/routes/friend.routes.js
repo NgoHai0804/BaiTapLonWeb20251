@@ -1,22 +1,11 @@
 // friend.routes.js
-// Quản lý quan hệ bạn bè.
-
-// Chức năng chính:
-// 1. Lấy danh sách bạn bè  RESTful
-// 2. Gửi lời mời kết bạn RESTful
-
-// 4. Lấy danh sách lời mời RESTful
-// 5 Chấp nhận/ Hủy lời mời RESTful
-// 6. Tìm bạn bè theo username RESTful
-// 7. Hủy kết bạn RESTful
-
-
+// Định nghĩa các route liên quan đến quản lý quan hệ bạn bè
+// Bao gồm: lấy danh sách bạn bè, gửi/chấp nhận/hủy lời mời, tìm kiếm, xóa bạn
 const express = require('express');
 const router = express.Router();
 const FriendController = require('../controllers/friend.controller');
 
-
-// Middleware xác thực (ví dụ)
+// Middleware xác thực JWT token
 const verifyToken = require('../middlewares/auth.middleware');
 
 // Tất cả route đều yêu cầu đăng nhập

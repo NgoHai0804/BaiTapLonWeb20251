@@ -2,13 +2,16 @@ import { socketClient } from './socketClient';
 import { SOCKET_EVENTS } from '../../utils/constants';
 
 export const gameSocket = {
-  // Emit events
   joinRoom: (roomId, password = '') => {
     socketClient.emit(SOCKET_EVENTS.JOIN_ROOM, { roomId, password });
   },
 
   leaveRoom: (roomId) => {
     socketClient.emit(SOCKET_EVENTS.LEAVE_ROOM, { roomId });
+  },
+
+  kickPlayer: (roomId, targetUserId) => {
+    socketClient.emit(SOCKET_EVENTS.KICK_PLAYER, { roomId, targetUserId });
   },
 
   playerReady: (roomId, isReady = true) => {
@@ -24,7 +27,12 @@ export const gameSocket = {
   },
 
   makeMove: (roomId, x, y) => {
-    socketClient.emit(SOCKET_EVENTS.MAKE_MOVE, { roomId, x, y });
+    try {
+      socketClient.emit(SOCKET_EVENTS.MAKE_MOVE, { roomId, x, y });
+    } catch (error) {
+      console.error('Lỗi khi emit MAKE_MOVE:', error);
+      throw error;
+    }
   },
 
   undoMove: (roomId) => {
@@ -64,7 +72,7 @@ export const gameSocket = {
     socketClient.emit(SOCKET_EVENTS.PING_ROOM, { roomId });
   },
 
-  // Listen events
+  // Lắng nghe events
   onJoinSuccess: (callback) => {
     socketClient.on(SOCKET_EVENTS.JOIN_SUCCESS, callback);
   },
@@ -170,6 +178,10 @@ export const gameSocket = {
     socketClient.on(SOCKET_EVENTS.GAME_STATE, callback);
   },
 
+  onGameStateSync: (callback) => {
+    socketClient.on(SOCKET_EVENTS.GAME_STATE_SYNC, callback);
+  },
+
   onRoomDeleted: (callback) => {
     socketClient.on(SOCKET_EVENTS.ROOM_DELETED, callback);
   },
@@ -180,6 +192,18 @@ export const gameSocket = {
 
   onPlayerReconnected: (callback) => {
     socketClient.on(SOCKET_EVENTS.PLAYER_RECONNECTED, callback);
+  },
+
+  onPlayerKicked: (callback) => {
+    socketClient.on(SOCKET_EVENTS.PLAYER_KICKED, callback);
+  },
+
+  onKickSuccess: (callback) => {
+    socketClient.on(SOCKET_EVENTS.KICK_SUCCESS, callback);
+  },
+
+  onKickError: (callback) => {
+    socketClient.on(SOCKET_EVENTS.KICK_ERROR, callback);
   },
 
   onReconnectCheck: (callback) => {
@@ -194,7 +218,7 @@ export const gameSocket = {
     socketClient.emit(SOCKET_EVENTS.CHECK_RECONNECT);
   },
 
-  // Remove listeners
+  // Xóa listeners
   offJoinSuccess: (callback) => {
     socketClient.off(SOCKET_EVENTS.JOIN_SUCCESS, callback);
   },
@@ -296,6 +320,18 @@ export const gameSocket = {
     socketClient.off(SOCKET_EVENTS.PLAYER_RECONNECTED, callback);
   },
 
+  offPlayerKicked: (callback) => {
+    socketClient.off(SOCKET_EVENTS.PLAYER_KICKED, callback);
+  },
+
+  offKickSuccess: (callback) => {
+    socketClient.off(SOCKET_EVENTS.KICK_SUCCESS, callback);
+  },
+
+  offKickError: (callback) => {
+    socketClient.off(SOCKET_EVENTS.KICK_ERROR, callback);
+  },
+
   offReconnectCheck: (callback) => {
     socketClient.off(SOCKET_EVENTS.RECONNECT_CHECK, callback);
   },
@@ -306,6 +342,10 @@ export const gameSocket = {
 
   offGameState: (callback) => {
     socketClient.off(SOCKET_EVENTS.GAME_STATE, callback);
+  },
+
+  offGameStateSync: (callback) => {
+    socketClient.off(SOCKET_EVENTS.GAME_STATE_SYNC, callback);
   },
 };
 

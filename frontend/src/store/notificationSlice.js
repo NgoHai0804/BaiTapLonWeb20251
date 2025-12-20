@@ -12,7 +12,7 @@ const notificationSlice = createSlice({
     addNotification: (state, action) => {
       const notification = {
         id: action.payload.id || Date.now().toString(),
-        type: action.payload.type, // 'message', 'friend_request', 'room_invite'
+        type: action.payload.type,
         title: action.payload.title,
         message: action.payload.message,
         data: action.payload.data,

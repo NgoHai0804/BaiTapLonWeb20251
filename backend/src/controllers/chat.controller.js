@@ -1,12 +1,11 @@
 // chat.controller.js
-// Quản lý tin nhắn giữa người chơi (cả trong phòng và riêng tư).
-
+// Controller xử lý các request liên quan đến tin nhắn (trong phòng và chat riêng tư)
 const response = require("../utils/response");
 const chatService = require("../services/chat.service");
 const UserService = require("../services/user.service");
 const logger = require("../utils/logger");
 
-// Lấy lịch sử chat của phòng
+// Lấy lịch sử chat của một phòng chơi
 async function getRoomChat(req, res) {
   try {
     const { roomId } = req.params;
@@ -18,16 +17,16 @@ async function getRoomChat(req, res) {
   }
 }
 
-// Lấy lịch sử chat riêng
+// Lấy lịch sử chat riêng tư giữa user hiện tại và một user khác
 async function getPrivateChat(req, res) {
   try {
     const { userId } = req.params;
     const currentUserId = req.user._id;
     
-    // Lấy thông tin người bạn chat
+    // Lấy thông tin của người bạn đang chat
     const friend = await UserService.getUserProfile(userId);
     
-    // Lấy lịch sử chat
+    // Lấy lịch sử tin nhắn riêng tư (giới hạn 50 tin nhắn gần nhất)
     const messages = await chatService.getPrivateMessages(currentUserId, userId, 50);
     
     return response.success(res, { messages, friend }, "Get private chat success");
@@ -37,7 +36,7 @@ async function getPrivateChat(req, res) {
   }
 }
 
-// Đánh dấu tin nhắn đã đọc
+// Đánh dấu một tin nhắn cụ thể là đã đọc
 async function markAsRead(req, res) {
   try {
     const { messageId } = req.params;

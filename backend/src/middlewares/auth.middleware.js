@@ -1,4 +1,4 @@
-// auth.middleware.js
+// auth.middleware.js - xác thực JWT token
 const jwt = require("jsonwebtoken");
 
 module.exports = (req, res, next) => {
@@ -11,11 +11,10 @@ module.exports = (req, res, next) => {
     }
 
     let token = authHeader.replace("Bearer ", "").trim();
-    // Loại bỏ dấu ngoặc kép nếu có
     token = token.replace(/^"(.*)"$/, '$1');
+    
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
 
-    // Chuẩn hóa thông tin user để các nơi khác luôn dùng _id
     req.user = {
       _id: decoded._id || decoded.id,
       username: decoded.username,

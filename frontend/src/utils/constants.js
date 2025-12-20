@@ -1,15 +1,15 @@
 // constants.js
-// Global constants
+// Các hằng số toàn cục
 
-// Game constants
+// Các hằng số game
 export const BOARD_SIZE = 20;
-export const TIME_LIMIT = 30; // seconds per turn
+export const TIME_LIMIT = 30; // giây mỗi lượt
 export const MAX_PLAYERS = 4;
 export const MIN_PLAYERS = 2;
 
-// Socket events
+// Events socket
 export const SOCKET_EVENTS = {
-  // Room events
+  // Events phòng
   JOIN_ROOM: 'join_room',
   LEAVE_ROOM: 'leave_room',
   PLAYER_READY: 'player_ready',
@@ -35,13 +35,17 @@ export const SOCKET_EVENTS = {
   CHECK_RECONNECT: 'check_reconnect',
   RECONNECT_CHECK: 'reconnect_check',
   RECONNECT_SUCCESS: 'reconnect_success',
+  KICK_PLAYER: 'kick_player',
+  KICK_SUCCESS: 'kick_success',
+  PLAYER_KICKED: 'player_kicked',
+  KICK_ERROR: 'kick_error',
   INVITE_TO_ROOM: 'invite_to_room',
   INVITE_SUCCESS: 'invite_success',
   INVITE_ERROR: 'invite_error',
   PING_ROOM: 'ping_room',
   ROOM_PONG: 'room_pong',
   
-  // Game events
+  // Events game
   MAKE_MOVE: 'make_move',
   MOVE_MADE: 'move_made',
   MOVE_ERROR: 'move_error',
@@ -54,6 +58,7 @@ export const SOCKET_EVENTS = {
   GET_GAME_STATE: 'get_game_state',
   GAME_STATE: 'game_state',
   GAME_STATE_ERROR: 'game_state_error',
+  GAME_STATE_SYNC: 'game_state_sync',
   GAME_END: 'game_end',
   SURRENDER_GAME: 'surrender_game',
   SURRENDER_ERROR: 'surrender_error',
@@ -65,7 +70,7 @@ export const SOCKET_EVENTS = {
   DRAW_CANCELLED: 'draw_cancelled',
   DRAW_ERROR: 'draw_error',
   
-  // Chat events
+  // Events chat
   SEND_MESSAGE: 'send_message',
   MESSAGE_RECEIVED: 'message_received',
   GET_ROOM_MESSAGES: 'get_room_messages',
@@ -74,7 +79,7 @@ export const SOCKET_EVENTS = {
   PRIVATE_MESSAGES: 'private_messages',
   CHAT_ERROR: 'chat_error',
   
-  // Connection events
+  // Events kết nối
   CONNECT: 'connect',
   DISCONNECT: 'disconnect',
   ERROR: 'error',
@@ -89,6 +94,7 @@ export const API_ENDPOINTS = {
     REGISTER: '/api/auth/register',
     LOGOUT: '/api/auth/logout',
     REFRESH: '/api/auth/refresh',
+    FORGOT_PASSWORD: '/api/auth/forgot-password',
   },
   ROOMS: {
     LIST: '/api/rooms',
@@ -103,13 +109,13 @@ export const API_ENDPOINTS = {
   },
 };
 
-// Game marks
+// Ký hiệu game
 export const GAME_MARKS = {
   X: 'X',
   O: 'O',
 };
 
-// Room status
+// Trạng thái phòng
 export const ROOM_STATUS = {
   WAITING: 'waiting',
   PLAYING: 'playing',

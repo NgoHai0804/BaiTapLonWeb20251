@@ -14,8 +14,14 @@ export const userApi = {
   },
 
   changePassword: async (data) => {
-    const response = await apiClient.post('/api/users/change-password', data);
-    return response.data.data || response.data;
+    try {
+      const response = await apiClient.post('/api/users/change-password', data);
+      return response.data.data || response.data;
+    } catch (error) {
+      // Trích xuất thông báo lỗi từ response
+      const errorMessage = error.response?.data?.message || error.message || 'Đổi mật khẩu thất bại';
+      throw new Error(errorMessage);
+    }
   },
 
   getLeaderboard: async (gameId = 'caro') => {
@@ -28,6 +34,22 @@ export const userApi = {
 
   getUserProfile: async (userId) => {
     const response = await apiClient.get(`/api/users/profile/${userId}`);
+    return response.data.data || response.data;
+  },
+
+  // API lịch sử game
+  getGameHistory: async (limit = 20, skip = 0) => {
+    const response = await apiClient.get(`/api/users/game-history?limit=${limit}&skip=${skip}`);
+    return response.data.data || response.data;
+  },
+
+  getUserGameHistory: async (userId, limit = 20, skip = 0) => {
+    const response = await apiClient.get(`/api/users/game-history/${userId}?limit=${limit}&skip=${skip}`);
+    return response.data.data || response.data;
+  },
+
+  getGameDetail: async (gameId) => {
+    const response = await apiClient.get(`/api/users/game/${gameId}`);
     return response.data.data || response.data;
   },
 };

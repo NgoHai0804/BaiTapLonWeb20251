@@ -1,1 +1,0 @@
-// kiểm tra gửi/lưu tin nhắn.

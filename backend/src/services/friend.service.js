@@ -1,25 +1,19 @@
-// friend.service.js
-// Xử lý quan hệ bạn bè và lời mời kết bạn.
+// friend.service.js - xử lý logic bạn bè và lời mời kết bạn
 const Friend = require("../models/friend.model");
 const User = require("../models/user.model");
 const logger = require("../utils/logger");
 
-
 const mongoose = require('mongoose');
 
-// Nếu có socket.io instance
+// Socket.IO instance để gửi thông báo realtime
 let io = null;
 
-// Để thông báo socket sau này
 function setSocketInstance(socketInstance) {
   io = socketInstance;
 }
 
-// ------------------------
-// CÁC HÀM NGHIỆP VỤ CHÍNH
-// ------------------------
 
-// 1 Gửi lời mời kết bạn
+// Gửi lời mời kết bạn
 async function sendFriendRequest(requesterId, addresseeId) {
   try {
     if (requesterId === addresseeId)
@@ -46,18 +40,16 @@ async function sendFriendRequest(requesterId, addresseeId) {
       }
 
       if (existing.status === "canceled" || existing.status === "removed") {
-        // Gửi lại: cập nhật thành pending mới
         existing.status = "pending";
         existing.updateAt = Date.now();
         await existing.save();
-        await existing.populate('requester', 'username nickname avatarUrl');
+        await existing.populate('requester', 'nickname avatarUrl');
         logger.info(`User ${requesterId} resent friend request to ${addresseeId}`);
         if (io) {
           const requestData = {
             _id: existing._id,
             requester: {
               _id: existing.requester._id,
-              username: existing.requester.username,
               nickname: existing.requester.nickname,
               avatarUrl: existing.requester.avatarUrl,
             },
@@ -79,8 +71,7 @@ async function sendFriendRequest(requesterId, addresseeId) {
       addressee: addresseeId,
     });
 
-    // Populate requester để có thông tin đầy đủ
-    await newRequest.populate('requester', 'username nickname avatarUrl');
+    await newRequest.populate('requester', 'nickname avatarUrl');
 
     logger.info(`User ${requesterId} sent friend request to ${addresseeId}`);
 
@@ -89,7 +80,6 @@ async function sendFriendRequest(requesterId, addresseeId) {
         _id: newRequest._id,
         requester: {
           _id: newRequest.requester._id,
-          username: newRequest.requester.username,
           nickname: newRequest.requester.nickname,
           avatarUrl: newRequest.requester.avatarUrl,
         },
@@ -113,32 +103,25 @@ async function sendFriendRequest(requesterId, addresseeId) {
 }
 
 
-// 2️ Chấp nhận lời mời
-// requesterId: người gửi lời mời (A)
-// addresseeId: người nhận lời mời (B) - người này mới có quyền chấp nhận
+// Chấp nhận lời mời kết bạn
 async function acceptFriendRequest(requesterId, addresseeId) {
   try {
     console.log("acceptFriendRequest:", { requesterId, addresseeId });
 
-    // Tìm lời mời: requester là người gửi, addressee là người nhận (người chấp nhận)
     const request = await Friend.findOne({
       requester: requesterId,
       addressee: addresseeId,
       status: "pending",
     });
 
-    // Nếu không có lời mời thì báo lỗi
     if (!request) {
       throw new Error("Không tìm thấy lời mời kết bạn. Chỉ người nhận lời mời mới có quyền chấp nhận.");
     }
 
-    // Cập nhật trạng thái thành accepted
     request.status = "accepted";
-
     await request.save();
     logger.info(`Friend request accepted: ${requesterId} -> ${addresseeId}`);
 
-    // Gửi realtime (nếu có socket.io)
     if (typeof io !== "undefined" && io) {
       io.to(requesterId.toString()).emit("friend:accepted", addresseeId);
       io.to(addresseeId.toString()).emit("friend:accepted", requesterId);
@@ -151,7 +134,7 @@ async function acceptFriendRequest(requesterId, addresseeId) {
 }
 
 
-// 3️ Hủy lời mời hoặc từ chối
+// Hủy hoặc từ chối lời mời kết bạn
 async function cancelFriendRequest(userAId, userBId) {
   try {
     console.log("cancelFriendRequest:", userAId, userBId);
@@ -175,7 +158,7 @@ async function cancelFriendRequest(userAId, userBId) {
   }
 }
 
-// 4️ Xóa bạn (unfriend)
+// Xóa bạn bè
 async function removeFriend(userAId, userBId) {
   try {
     const friendRecord = await Friend.findOne({
@@ -199,7 +182,7 @@ async function removeFriend(userAId, userBId) {
 }
 
 
-// 5️ Lấy danh sách bạn bè
+// Lấy danh sách bạn bè
 async function getFriendsList(userId) {
   try {
     const friends = await Friend.find({
@@ -208,8 +191,8 @@ async function getFriendsList(userId) {
         { addressee: userId, status: "accepted" },
       ],
     })
-      .populate("requester", "username nickname avatarUrl status")
-      .populate("addressee", "username nickname avatarUrl status");
+      .populate("requester", "nickname avatarUrl status")
+      .populate("addressee", "nickname avatarUrl status");
     
     const result = friends.map((f) =>
       f.requester._id.toString() === userId.toString()
@@ -225,13 +208,13 @@ async function getFriendsList(userId) {
   }
 }
 
-// 6️ Lấy danh sách lời mời chờ
+// Lấy danh sách lời mời kết bạn đang chờ
 async function getPendingRequests(userId) {
   try {
     const requests = await Friend.find({
       addressee: userId,
       status: "pending",
-    }).populate("requester", "username nickname avatarUrl");
+    }).populate("requester", "nickname avatarUrl");
     
     logger.info(`Fetched pending friend requests for user ${userId}`);
     return requests;
@@ -241,7 +224,7 @@ async function getPendingRequests(userId) {
   }
 }
 
-// 7️ Kiểm tra quan hệ giữa 2 người
+// Kiểm tra trạng thái quan hệ giữa 2 người
 async function getRelationshipStatus(userAId, userBId) {
   try {
     const rel = await Friend.findOne({
@@ -258,7 +241,7 @@ async function getRelationshipStatus(userAId, userBId) {
   }
 }
 
-// 7b️ Lấy thông tin chi tiết về quan hệ giữa 2 người (bao gồm ai là requester)
+// Lấy thông tin chi tiết về quan hệ giữa 2 người
 async function getRelationshipDetail(userAId, userBId) {
   try {
     const rel = await Friend.findOne({
@@ -288,7 +271,7 @@ async function getRelationshipDetail(userAId, userBId) {
   }
 }
 
-// 8 Tìm người dùng theo nickname HOẶC userID (loại trừ bản thân) - Ưu tiên userID
+// Tìm kiếm người dùng theo nickname hoặc userID
 async function searchUsers(nickname, userID, excludeUserId) {
   try {
     if (!excludeUserId) {
@@ -298,43 +281,37 @@ async function searchUsers(nickname, userID, excludeUserId) {
 
     let query = { _id: { $ne: excludeUserId } };
 
-    // Ưu tiên userID nếu có (tìm chính xác 1 user)
     if (userID) {
-      console.log("Input userID:", userID, typeof userID, userID.length); // Debug log
+      console.log("Input userID:", userID, typeof userID, userID.length);
       
-      // Trim để loại bỏ space thừa nếu có
       const trimmedUserID = userID.trim();
       
       try {
         const userIdObj = new mongoose.Types.ObjectId(trimmedUserID);
-        // Nếu tìm userID chính là excludeUserId, return empty
         if (userIdObj.toString() === excludeUserId.toString()) {
           console.log("Searching self, return empty");
           return [];
         }
-        query._id = userIdObj; // Tìm chính xác userID
+        query._id = userIdObj;
         console.log("Searching by userID:", userIdObj);
       
       } catch (err) {
-        console.error("ObjectId creation error:", err); // Debug log
+        console.error("ObjectId creation error:", err);
         throw new Error("userID không hợp lệ");
       }
 
     } else if (nickname && nickname.length > 0) {
-      // Chỉ tìm theo nickname nếu KHÔNG có userID
       query.nickname = { $regex: nickname, $options: "i" };
       console.log("Searching by nickname:", nickname);
     
     } else {
-      // Không có tham số tìm kiếm hợp lệ nào
       console.log("No valid search params provided");
       return [];
     }
 
-    const users = await User.find(query).select("username nickname avatarUrl status");
-    console.log("Found users:", users.length, users);
+    const users = await User.find(query).select("nickname avatarUrl status");
 
-    // Lấy friendStatus cho từng user (nếu users không empty)
+    // Thêm thông tin trạng thái bạn bè cho mỗi user
     let usersWithFriendStatus = [];
     if (users.length > 0) {
       usersWithFriendStatus = await Promise.all(
@@ -349,7 +326,6 @@ async function searchUsers(nickname, userID, excludeUserId) {
         })
       );
     }
-    console.log(usersWithFriendStatus);
 
     const searchType = userID ? 'userID' : 'nickname';
     logger.info(`Search users by ${searchType} - Found: ${usersWithFriendStatus.length}`);
@@ -360,9 +336,6 @@ async function searchUsers(nickname, userID, excludeUserId) {
   }
 }
 
-// ------------------------
-// Export ra cho controller gọi
-// ------------------------
 module.exports = {
   sendFriendRequest,
   acceptFriendRequest,

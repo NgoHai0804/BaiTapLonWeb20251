@@ -1,5 +1,4 @@
-// tokenHelper.js
-// Helper để xử lý token, loại bỏ dấu ngoặc kép và format đúng
+// tokenHelper.js - Xử lý token, loại bỏ dấu ngoặc kép và format đúng
 
 export const cleanToken = (token) => {
   if (!token) return null;

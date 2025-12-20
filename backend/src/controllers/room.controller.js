@@ -1,18 +1,26 @@
-// controllers/room.controller.js
+// room.controller.js - xử lý request phòng chơi
 const RoomService = require("../services/room.service");
 const response = require("../utils/response");
 const logger = require("../utils/logger");
 
-// Tạo phòng
+// Tạo phòng chơi mới
 async function createRoom(req, res) {
   try {
+    const userId = req.user._id;
+    
+    const existingRoom = await RoomService.findRoomByUserId(userId);
+    if (existingRoom) {
+      logger.info(`User ${userId} đã có phòng ${existingRoom._id}, trả về phòng hiện tại`);
+      return response.success(res, existingRoom, "Bạn đang ở trong phòng này", 200);
+    }
+    
     const { name, password, turnTimeLimit } = req.body;
     const room = await RoomService.createRoom({
       name,
       password,
-      maxPlayers: 2, // Luôn là 2 người
+      maxPlayers: 2,
       turnTimeLimit,
-      hostId: req.user._id,
+      hostId: userId,
       hostUsername: req.user.username || req.user.nickname,
     });
     logger.info(`Tạo phòng ${room._id}`);
@@ -23,7 +31,7 @@ async function createRoom(req, res) {
   }
 }
 
-// Tham gia phòng
+// Tham gia vào một phòng chơi có sẵn
 async function joinRoom(req, res) {
   try {
     const { roomId, password } = req.body;
@@ -42,7 +50,7 @@ async function joinRoom(req, res) {
   }
 }
 
-// Rời phòng
+// Rời khỏi phòng chơi hiện tại
 async function leaveRoom(req, res) {
   try {
     const { roomId } = req.body;
@@ -52,11 +60,9 @@ async function leaveRoom(req, res) {
     });
 
     if (!room) {
-      // req.io.to(roomId.toString()).emit("room:end", { reason: "Phòng trống" });
+      // Phòng đã bị xóa vì không còn người chơi nào
       return response.success(res, {}, "Bạn đã rời phòng -> Phòng đã bị xóa");
     }
-
-    // req.io.to(room._id.toString()).emit("room:update", room);
     return response.success(res, room, "Rời phòng thành công");
   } catch (err) {
     logger.error("leaveRoom error: %o", err);
@@ -64,12 +70,11 @@ async function leaveRoom(req, res) {
   }
 }
 
-// Cập nhật phòng
+// Cập nhật thông tin phòng
 async function updateRoom(req, res) {
   try {
     const { roomId, data } = req.body;
     const room = await RoomService.updateRoom(roomId, data);
-    // req.io.to(room._id.toString()).emit("room:update", room);
     return response.success(res, room, "Cập nhật phòng thành công");
   } catch (err) {
     logger.error("updateRoom error: %o", err);
@@ -77,7 +82,7 @@ async function updateRoom(req, res) {
   }
 }
 
-// Toggle trạng thái Ready
+// Bật/tắt trạng thái sẵn sàng
 async function toggleReady(req, res) {
   try {
     const { roomId, isReady } = req.body;
@@ -87,7 +92,6 @@ async function toggleReady(req, res) {
       userId: req.user._id,
     });
 
-    // req.io.to(room._id.toString()).emit("room:update", room);
     if (started) req.io.to(room._id.toString()).emit("room:start", room);
 
     return response.success(res, room, "Cập nhật trạng thái thành công");
@@ -97,7 +101,7 @@ async function toggleReady(req, res) {
   }
 }
 
-// Kết thúc trận đấu
+// Kết thúc trận đấu và cập nhật kết quả
 async function endGame(req, res) {
   try {
     const { roomId, result } = req.body;
@@ -111,7 +115,7 @@ async function endGame(req, res) {
   }
 }
 
-// Lấy danh sách phòng
+// Lấy danh sách tất cả các phòng đang có
 async function getRoomList(req, res) {
   try {
     const rooms = await RoomService.getAllRooms();
@@ -122,7 +126,7 @@ async function getRoomList(req, res) {
   }
 }
 
-// Kiểm tra xem user có đang trong phòng nào không
+// Kiểm tra user có đang ở trong phòng nào không
 async function checkUserRoom(req, res) {
   try {
     const userId = req.user._id;
@@ -139,7 +143,7 @@ async function checkUserRoom(req, res) {
   }
 }
 
-// Xác minh mật khẩu phòng (không join vào phòng)
+// Xác minh mật khẩu phòng
 async function verifyPassword(req, res) {
   try {
     const { roomId, password } = req.body;
@@ -160,7 +164,6 @@ async function verifyPassword(req, res) {
   }
 }
 
-// Export tất cả hàm
 module.exports = {
   createRoom,
   joinRoom,
