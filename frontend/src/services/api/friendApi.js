@@ -1,24 +1,40 @@
-// friendApi.js
+import apiClient from './apiClient';
 
-// Quản lý danh sách bạn bè, lời mời, trạng thái online/offline.
+export const friendApi = {
+  getFriends: async () => {
+    const response = await apiClient.get('/api/friend');
+    return response.data;
+  },
 
-// Nhiệm vụ:
+  sendRequest: async (addresseeId) => {
+    const response = await apiClient.post('/api/friend/request', { addresseeId });
+    return response.data;
+  },
 
-// Lấy danh sách bạn bè (GET /friends).
+  getRequests: async () => {
+    const response = await apiClient.get('/api/friend/requests');
+    return response.data.data || response.data;
+  },
 
-// Gửi lời mời kết bạn (POST /friends/invite).
+  acceptRequest: async (requesterId) => {
+    const response = await apiClient.post('/api/friend/accept', { requesterId });
+    return response.data;
+  },
 
-// Chấp nhận hoặc từ chối lời mời (POST /friends/respond).
+  cancelRequest: async (requesterId) => {
+    const response = await apiClient.post('/api/friend/cancel', { requesterId });
+    return response.data;
+  },
 
-// Xóa bạn (DELETE /friends/:id).
+  searchUser: async (nickname, userID) => {
+    const response = await apiClient.post('/api/friend/search', { nickname, userID });
+    return response.data;
+  },
 
-// Kiểm tra trạng thái online (GET /friends/status hoặc qua socket).
+  removeFriend: async (friendId) => {
+    const response = await apiClient.post('/api/friend/unfriend', { friendId });
+    return response.data;
+  },
+};
 
-// Gợi ý cấu trúc:
-
-// friendApi = {
-//   getFriends(),
-//   inviteFriend(userId),
-//   respondInvite(inviteId, status),
-//   removeFriend(userId)
-// }
+export default friendApi;

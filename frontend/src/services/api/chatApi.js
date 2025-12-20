@@ -1,20 +1,20 @@
-// chatApi.js
+import apiClient from './apiClient';
 
-// Làm việc với tin nhắn — chat trong phòng hoặc chat riêng giữa 2 người.
+export const chatApi = {
+  getRoomChat: async (roomId) => {
+    const response = await apiClient.get(`/api/chat/room/${roomId}`);
+    return response.data;
+  },
 
-// Nhiệm vụ:
+  getPrivateChat: async (userId) => {
+    const response = await apiClient.get(`/api/chat/private/${userId}`);
+    return response.data.data || response.data;
+  },
 
-// Lấy lịch sử chat (GET /chat/history?roomId=... hoặc GET /chat/private?userId=...).
+  markAsRead: async (chatId) => {
+    const response = await apiClient.post(`/api/chat/read/${chatId}`);
+    return response.data;
+  },
+};
 
-// Lưu tin nhắn (nếu backend có lưu DB) (POST /chat/save).
-
-// Đánh dấu tin nhắn đã đọc (POST /chat/read).
-
-// Gợi ý cấu trúc:
-
-// chatApi = {
-//   getRoomChat(roomId),
-//   getPrivateChat(userId),
-//   sendMessage(data),
-//   markAsRead(chatId)
-// }
+export default chatApi;
