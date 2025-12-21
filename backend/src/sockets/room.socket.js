@@ -311,6 +311,26 @@ async function handleDisconnect(io, socket) {
   const userId = socket.user?._id;
   const username = socket.user?.username || "Unknown";
 
+
+
+  // room.socket.js
+/** ----------------- CLEANUP PING TRACKING ----------------- */
+
+/** ----------------- RECONNECT WELCOME ----------------- */
+// Thêm logic này vào trong hàm handleCheckAndReconnect 
+// đoạn sau khi đánh dấu reconnected thành công:
+
+      // Thông báo đặc biệt khi quay lại trận đấu đang chơi
+      if (roomAfter.status === "playing") {
+        socket.emit("game_alert", {
+          type: "info",
+          message: "Trận đấu vẫn đang diễn ra, hãy tập trung nhé!",
+          timestamp: new Date().toISOString()
+        });
+      }
+
+
+
   try {
     const room = await RoomService.getRoomById(roomIdStr);
     if (!room) {
