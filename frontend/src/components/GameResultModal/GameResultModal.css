@@ -1,0 +1,195 @@
+.game-result-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.8);
+    backdrop-filter: blur(8px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 10000;
+}
+
+.game-result-modal {
+    position: relative;
+    background: #fff;
+    border-radius: 30px;
+    padding: 3rem 2.5rem;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+    text-align: center;
+    max-width: 500px;
+    width: 90%;
+    overflow: hidden;
+}
+
+/* Result Icon */
+.result-icon {
+    font-size: 6rem;
+    margin-bottom: 1.5rem;
+    filter: drop-shadow(0 10px 20px rgba(0, 0, 0, 0.2));
+}
+
+.result-win .result-icon {
+    color: #ffd700;
+    animation: pulse 2s infinite;
+}
+
+.result-lose .result-icon {
+    color: #f56565;
+}
+
+.result-draw .result-icon {
+    color: #4299e1;
+}
+
+@keyframes pulse {
+
+    0%,
+    100% {
+        transform: scale(1);
+    }
+
+    50% {
+        transform: scale(1.1);
+    }
+}
+
+/* Title */
+.result-title {
+    font-size: 3rem;
+    font-weight: 800;
+    margin-bottom: 1rem;
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.result-win .result-title {
+    background: linear-gradient(135deg, #ffd700, #ff8c00);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+.result-lose .result-title {
+    color: #f56565;
+}
+
+.result-draw .result-title {
+    color: #4299e1;
+}
+
+/* Message */
+.result-message {
+    font-size: 1.25rem;
+    color: #4a5568;
+    margin-bottom: 2.5rem;
+}
+
+/* Buttons */
+.result-buttons {
+    display: flex;
+    gap: 1rem;
+    justify-content: center;
+}
+
+.btn-rematch,
+.btn-exit {
+    padding: 1rem 2.5rem;
+    border-radius: 50px;
+    font-size: 1.1rem;
+    font-weight: 700;
+    border: none;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+.btn-rematch {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: #fff;
+}
+
+.btn-exit {
+    background: #e2e8f0;
+    color: #2d3748;
+}
+
+/* Decorative Stars (Win Only) */
+.star {
+    position: absolute;
+    font-size: 3rem;
+    opacity: 0.6;
+    pointer-events: none;
+}
+
+.star-1 {
+    top: 10%;
+    left: 10%;
+}
+
+.star-2 {
+    top: 15%;
+    right: 12%;
+}
+
+.star-3 {
+    bottom: 15%;
+    left: 15%;
+}
+
+/* Win Specific Styling */
+.result-win {
+    background: linear-gradient(135deg, #fff5e1 0%, #ffe4b5 100%);
+    border: 3px solid #ffd700;
+}
+
+/* Lose Specific Styling */
+.result-lose {
+    background: linear-gradient(135deg, #fff 0%, #fee 100%);
+    border: 3px solid #f56565;
+}
+
+/* Draw Specific Styling */
+.result-draw {
+    background: linear-gradient(135deg, #fff 0%, #e6f7ff 100%);
+    border: 3px solid #4299e1;
+}
+
+/* Responsive */
+@media (max-width: 640px) {
+    .game-result-modal {
+        padding: 2.5rem 1.5rem;
+    }
+
+    .result-icon {
+        font-size: 4rem;
+    }
+
+    .result-title {
+        font-size: 2rem;
+    }
+
+    .result-message {
+        font-size: 1rem;
+        margin-bottom: 2rem;
+    }
+
+    .result-buttons {
+        flex-direction: column;
+        width: 100%;
+    }
+
+    .btn-rematch,
+    .btn-exit {
+        width: 100%;
+        padding: 0.875rem 2rem;
+        font-size: 1rem;
+    }
+
+    .star {
+        font-size: 2rem;
+    }
+}
