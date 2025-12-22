@@ -9,7 +9,7 @@ const PORT = process.env.PORT || 3000;
 
 const startServer = async () => {
   try {
-    console.log("🔄 Đang kết nối đến MongoDB...");
+    console.log("Đang kết nối đến MongoDB...");
     await connectDB();
     
     const server = http.createServer(app);
